@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Guide utilisateur Relancio : application desktop locale, messagerie, IA locale, accès web/mobile optionnel et confidentialité.">
+  <title>Messagerie — Relancio</title>
+  <link rel="stylesheet" href="./css/relancio-docs.css">
+</head>
+<body class="">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Accueil Relancio">
+      <img src="./assets/relancio-logo-transparent.png" alt="Logo Relancio">
+      <span><strong>Relancio</strong><small>Guide utilisateur</small></span>
+    </a>
+    <nav class="top-links" aria-label="Liens auteur">
+      <a href="https://cogniptyzior.github.io/" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://www.linkedin.com/in/damien-farina/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    </nav>
+  </header>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Navigation du guide">
+      <button class="nav-toggle" type="button" aria-expanded="false">Sections du guide</button>
+      <nav class="side-nav"><a class="" href="index.html">Accueil</a><a class="" href="quick-start.html">Démarrage</a><a class="" href="desktop.html">Application</a><a class="active" href="mail.html">Messagerie</a><a class="" href="ai-local.html">IA locale</a><a class="" href="kits.html">Kits</a><a class="" href="privacy.html">Confidentialité</a><a class="" href="mobile.html">Mobile</a><a class="" href="troubleshooting.html">Dépannage</a><a class="" href="terms.html">Conditions</a></nav>
+    </aside>
+    <main class="content">
+      <section class="page-hero">
+        <p class="eyebrow">Relancio</p>
+        <h1>Messagerie</h1>
+        <p>Configurer la réception POP3/IMAP, l'envoi SMTP, Gmail et les pièces jointes.</p>
+      </section>
+      
+<section class="card"><h2>Réception POP3 / IMAP</h2><p>Relancio utilise un compte de réception que vous contrôlez. Vous choisissez le mode de réception, le serveur, le port, la sécurité, l’identifiant et le mot de passe.</p><ul><li>POP3 convient souvent à une relève simple.</li><li>IMAP peut être préférable si le fournisseur ou votre usage repose sur une boîte synchronisée.</li><li>Le bouton <strong>Tester la connexion</strong> permet de vérifier les paramètres avant usage.</li><li>La relève peut être automatique ou manuelle avec le bouton <strong>Relever</strong>.</li><li>La fréquence de relève automatique peut être paramétrée selon le rythme souhaité.</li></ul><figure class="screenshot"><a href="./assets/screenshots/settings-reception.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/settings-reception.webp" alt="Paramètres de réception" loading="lazy"></a><figcaption>Configuration de la réception : mode, serveur, port, sécurité, identifiant, mot de passe, fréquence de relève et test de connexion.</figcaption></figure></section>
+<section class="card"><h2>Envoi SMTP</h2><p>L’envoi passe par le serveur SMTP configuré dans l’onglet <strong>Envoi</strong>. Relancio enverra les réponses depuis cette messagerie.</p><ul><li>Renseignez serveur, port, sécurité, adresse d’envoi, identifiant et mot de passe.</li><li>Utilisez le bouton <strong>Envoyer un email de test</strong> pour vérifier la configuration avant usage réel.</li><li>Les réponses ne partent qu'après action explicite sur <strong>Envoyer</strong>.</li></ul><figure class="screenshot"><a href="./assets/screenshots/settings-envoi.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/settings-envoi.webp" alt="Paramètres d’envoi SMTP" loading="lazy"></a><figcaption>Configuration SMTP et envoi d’un email de test.</figcaption></figure></section>
+<section class="card"><h2>Gmail et fournisseurs mail</h2><p>Gmail peut fonctionner en POP ou IMAP selon la configuration choisie. Les paramètres exacts dépendent du fournisseur. Dans de nombreux cas, Gmail exige un <strong>mot de passe d’application</strong> plutôt que le mot de passe habituel du compte, notamment lorsque la validation en deux étapes est activée.</p><div class="callout"><strong>Exemple POP Gmail :</strong> serveur <code>pop.gmail.com</code>, port <code>995</code>, sécurité <strong>SSL/TLS</strong>, identifiant complet et mot de passe d’application.</div></section>
+<section class="card"><h2>Pièces jointes</h2><p>Les pièces jointes ajoutées à une réponse sont liées au brouillon sortant. En revanche, les pièces jointes entrantes ou transférées ne sont pas stockées durablement ni analysées par Relancio.</p><div class="note"><strong>Limite importante :</strong> Relancio peut afficher ou utiliser le nom des pièces jointes entrantes comme information de contexte, mais il ne lit pas leur contenu pour générer la réponse.</div></section>
+
+    </main>
+  </div>
+  <button class="to-top" type="button" aria-label="Retour en haut">↑</button>
+  <script src="./js/relancio-docs.js"></script>
+</body>
+</html>

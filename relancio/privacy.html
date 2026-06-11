@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Guide utilisateur Relancio : application desktop locale, messagerie, IA locale, accès web/mobile optionnel et confidentialité.">
+  <title>Confidentialité — Relancio</title>
+  <link rel="stylesheet" href="./css/relancio-docs.css">
+</head>
+<body class="">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Accueil Relancio">
+      <img src="./assets/relancio-logo-transparent.png" alt="Logo Relancio">
+      <span><strong>Relancio</strong><small>Guide utilisateur</small></span>
+    </a>
+    <nav class="top-links" aria-label="Liens auteur">
+      <a href="https://cogniptyzior.github.io/" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://www.linkedin.com/in/damien-farina/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    </nav>
+  </header>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Navigation du guide">
+      <button class="nav-toggle" type="button" aria-expanded="false">Sections du guide</button>
+      <nav class="side-nav"><a class="" href="index.html">Accueil</a><a class="" href="quick-start.html">Démarrage</a><a class="" href="desktop.html">Application</a><a class="" href="mail.html">Messagerie</a><a class="" href="ai-local.html">IA locale</a><a class="" href="kits.html">Kits</a><a class="active" href="privacy.html">Confidentialité</a><a class="" href="mobile.html">Mobile</a><a class="" href="troubleshooting.html">Dépannage</a><a class="" href="terms.html">Conditions</a></nav>
+    </aside>
+    <main class="content">
+      <section class="page-hero">
+        <p class="eyebrow">Relancio</p>
+        <h1>Confidentialité</h1>
+        <p>Ce qui reste local, ce que le tunnel ne stocke pas, et les limites importantes.</p>
+      </section>
+      
+<section class="card"><h2>Principe local-first</h2><p>Relancio est conçu pour fonctionner sur le poste de l'utilisateur. Les mails stockés, brouillons, réponses, prompts, règles métier, paramètres et données IA restent locaux.</p><div class="privacy-grid"><div><h3>Reste local</h3><ul><li>Mails enregistrés</li><li>Réponses et brouillons</li><li>Prompts et règles métier</li><li>Configuration</li><li>Données liées à l’IA locale</li></ul></div><div><h3>Sort du poste uniquement selon l’usage</h3><ul><li>Connexion aux serveurs mail configurés</li><li>Email envoyé via SMTP</li><li>Accès distant privé si activé</li></ul></div></div></section>
+<section class="card"><h2>Provisioning et tunnel</h2><p>Le fichier <code>.data</code> permet d'associer le poste Relancio à une adresse privée et d'activer l'accès distant lorsqu'il est disponible. Cet accès est provisionné par l'auteur et peut être fourni ou non selon les cas.</p><p>Le tunnel sert à transporter l'accès vers le poste Relancio. Il n'a pas vocation à lire, modifier ou stocker vos mails, réponses, prompts, modèles IA ou données personnelles applicatives.</p><p>L'adresse privée devient utile lorsque le site local est démarré et que le tunnel est actif. Pour un accès distant, définissez aussi un mot de passe dans l'onglet <strong>Mobile</strong>.</p><figure class="screenshot"><a href="./assets/screenshots/settings-provisioning.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/settings-provisioning.webp" alt="Paramètres Provisioning" loading="lazy"></a><figcaption>Provisioning : import du code .data, sous-domaine privé et rappel de confidentialité.</figcaption></figure></section>
+<section class="card"><h2>Pièces jointes entrantes</h2><p>Les pièces jointes reçues ou transférées ne sont pas stockées ni analysées par Relancio. Seuls leurs noms peuvent être affichés ou utilisés comme indice contextuel.</p></section>
+<section class="card"><h2>Mot de passe web/mobile</h2><p>Si l'accès web/mobile est utilisé, il est protégé par le mot de passe défini dans l'onglet <strong>Mobile</strong>. Ce mot de passe est enregistré localement sous forme hashée.</p></section>
+
+    </main>
+  </div>
+  <button class="to-top" type="button" aria-label="Retour en haut">↑</button>
+  <script src="./js/relancio-docs.js"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Guide utilisateur Relancio : application desktop locale, messagerie, IA locale, accès web/mobile optionnel et confidentialité.">
+  <title>Accès web/mobile — Relancio</title>
+  <link rel="stylesheet" href="./css/relancio-docs.css">
+</head>
+<body class="">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Accueil Relancio">
+      <img src="./assets/relancio-logo-transparent.png" alt="Logo Relancio">
+      <span><strong>Relancio</strong><small>Guide utilisateur</small></span>
+    </a>
+    <nav class="top-links" aria-label="Liens auteur">
+      <a href="https://cogniptyzior.github.io/" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://www.linkedin.com/in/damien-farina/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    </nav>
+  </header>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Navigation du guide">
+      <button class="nav-toggle" type="button" aria-expanded="false">Sections du guide</button>
+      <nav class="side-nav"><a class="" href="index.html">Accueil</a><a class="" href="quick-start.html">Démarrage</a><a class="" href="desktop.html">Application</a><a class="" href="mail.html">Messagerie</a><a class="" href="ai-local.html">IA locale</a><a class="" href="kits.html">Kits</a><a class="" href="privacy.html">Confidentialité</a><a class="active" href="mobile.html">Mobile</a><a class="" href="troubleshooting.html">Dépannage</a><a class="" href="terms.html">Conditions</a></nav>
+    </aside>
+    <main class="content">
+      <section class="page-hero">
+        <p class="eyebrow">Relancio</p>
+        <h1>Accès web/mobile</h1>
+        <p>Une fonctionnalité complémentaire et optionnelle pour consulter et valider à distance.</p>
+      </section>
+      
+<section class="note important"><h2>Fonction complémentaire optionnelle</h2><p>Relancio s'utilise d'abord depuis l'application desktop. L'accès web/mobile est un complément utile pour consulter et valider certaines réponses à distance. Il nécessite une clé ou un code de provisioning fourni par l'auteur, qui peut être accordé ou non.</p></section>
+<section class="card"><h2>Ce que permet le portail web/mobile</h2><p>Une fois l'accès disponible et configuré, le portail permet de consulter les réponses proposées, rechercher par client, email ou objet, trier la liste, filtrer par statut, ouvrir un mail, corriger le nom ou l'email client, modifier la réponse, sauvegarder ou envoyer manuellement.</p><div class="gallery three"><figure><img src="./assets/screenshots/web-login.webp" alt="Connexion au portail web/mobile" loading="lazy"><figcaption>Connexion protégée par mot de passe.</figcaption></figure><figure><img src="./assets/screenshots/web-list.webp" alt="Liste des réponses proposées" loading="lazy"><figcaption>Liste, recherche, tri et filtres par statut.</figcaption></figure><figure><img src="./assets/screenshots/web-reply.webp" alt="Vérification d'une réponse web" loading="lazy"><figcaption>Vérification, modification et envoi manuel de la réponse.</figcaption></figure></div></section>
+<section class="card"><h2>Configuration côté application</h2><p>Les réglages se font dans l'application desktop, notamment les onglets <strong>Provisioning</strong> et <strong>Mobile</strong>. Le mot de passe web/mobile est stocké hashé localement. L'adresse privée n'est utile que si l'accès distant a été provisionné.</p><p>L'onglet Mobile permet aussi de démarrer le serveur local, tester l'accès local, démarrer le tunnel et copier l'adresse mobile privée. La période d'affichage limite les éléments visibles aux mails récents.</p><figure class="screenshot"><a href="./assets/screenshots/settings-mobile.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/settings-mobile.webp" alt="Paramètres Mobile" loading="lazy"></a><figcaption>Onglet Mobile : mot de passe web/mobile, accès local, tunnel et période des items affichés.</figcaption></figure></section>
+<section class="card"><h2>Pas d’automatisation cachée</h2><p>Même depuis le web/mobile, l’utilisateur doit ouvrir la réponse, la relire puis cliquer explicitement sur <strong>Envoyer</strong>. Le portail n’ajoute pas de mode d’envoi automatique.</p></section>
+
+    </main>
+  </div>
+  <button class="to-top" type="button" aria-label="Retour en haut">↑</button>
+  <script src="./js/relancio-docs.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Guide utilisateur Relancio : application desktop locale, messagerie, IA locale, accès web/mobile optionnel et confidentialité.">
+  <title>Application desktop — Relancio</title>
+  <link rel="stylesheet" href="./css/relancio-docs.css">
+</head>
+<body class="">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Accueil Relancio">
+      <img src="./assets/relancio-logo-transparent.png" alt="Logo Relancio">
+      <span><strong>Relancio</strong><small>Guide utilisateur</small></span>
+    </a>
+    <nav class="top-links" aria-label="Liens auteur">
+      <a href="https://cogniptyzior.github.io/" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://www.linkedin.com/in/damien-farina/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    </nav>
+  </header>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Navigation du guide">
+      <button class="nav-toggle" type="button" aria-expanded="false">Sections du guide</button>
+      <nav class="side-nav"><a class="" href="index.html">Accueil</a><a class="" href="quick-start.html">Démarrage</a><a class="active" href="desktop.html">Application</a><a class="" href="mail.html">Messagerie</a><a class="" href="ai-local.html">IA locale</a><a class="" href="kits.html">Kits</a><a class="" href="privacy.html">Confidentialité</a><a class="" href="mobile.html">Mobile</a><a class="" href="troubleshooting.html">Dépannage</a><a class="" href="terms.html">Conditions</a></nav>
+    </aside>
+    <main class="content">
+      <section class="page-hero">
+        <p class="eyebrow">Relancio</p>
+        <h1>Application desktop</h1>
+        <p>Le cœur de Relancio : mails reçus, mails envoyés, réponses proposées et validation.</p>
+      </section>
+      
+<section class="card"><h2>Vue principale</h2><p>L'application desktop est le cœur de Relancio. Elle sert à relever les mails, consulter les demandes, ajuster les réponses proposées et déclencher les envois.</p><ul><li>La colonne gauche liste les mails et propose recherche, tri et filtres.</li><li>Le panneau central affiche le mail client ou le mail envoyé sélectionné.</li><li>Le panneau droit contient la réponse proposée, modifiable avant sauvegarde ou envoi.</li><li>Les voyants Local, Tunnel, SMTP et IA donnent un aperçu rapide de l'état des services utiles.</li></ul></section>
+<figure class="screenshot"><a href="./assets/screenshots/desktop-mails-recus.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/desktop-mails-recus.webp" alt="Vue Mails reçus" loading="lazy"></a><figcaption>Dans la vue Mails reçus, Relancio affiche le mail client et la réponse proposée.</figcaption></figure>
+<section class="card"><h2>Réponse proposée</h2><p>Avant l’envoi, vous pouvez corriger le nom client, l’adresse destinataire, l’objet et le contenu de la réponse. L’éditeur permet les listes, citations, liens, gras, italique, souligné, annulation, rétablissement et nettoyage de mise en forme.</p><p>L’icône de consultation des pièces jointes ouvre une vue étendue de la réponse. Elle facilite la relecture, la modification du contenu et la gestion des pièces jointes sortantes avant l’envoi.</p><div class="callout"><strong>Logique de destinataire :</strong> si Relancio détecte un mail transféré, il tente de répondre à l’expéditeur d’origine détecté. Sinon, il utilise l’expéditeur du mail reçu. L’adresse reste modifiable manuellement.</div><ul><li><strong>Sauver</strong> conserve la réponse.</li><li><strong>Régénérer</strong> demande une nouvelle proposition à l’IA locale.</li><li><strong>Envoyer</strong> expédie le mail via le SMTP configuré.</li><li><strong>Ignorer</strong> ou <strong>Supprimer</strong> servent à gérer les mails qui ne nécessitent pas de réponse.</li></ul><figure class="screenshot"><a href="./assets/screenshots/desktop-reponse-etendue.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/desktop-reponse-etendue.webp" alt="Vue étendue de la réponse proposée" loading="lazy"></a><figcaption>Vue étendue : édition confortable de la réponse et suivi des pièces jointes sortantes.</figcaption></figure></section>
+<section class="card"><h2>Mails envoyés</h2><p>La vue <strong>Mails envoyés</strong> permet de consulter l'historique des messages expédiés depuis Relancio et de préparer une nouvelle réponse lorsque le contexte le justifie.</p><figure class="screenshot"><a href="./assets/screenshots/desktop-mails-envoyes.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/desktop-mails-envoyes.webp" alt="Vue Mails envoyés" loading="lazy"></a><figcaption>Historique des messages envoyés et préparation d’une nouvelle réponse depuis un mail déjà expédié.</figcaption></figure></section>
+<section class="card"><h2>Statuts visibles</h2><p>Les badges comme <strong>À traiter</strong>, <strong>Envoyé</strong> ou <strong>Non répondu</strong> aident à suivre l'état des demandes et réponses. Les filtres permettent de retrouver plus vite les messages à traiter.</p></section>
+
+    </main>
+  </div>
+  <button class="to-top" type="button" aria-label="Retour en haut">↑</button>
+  <script src="./js/relancio-docs.js"></script>
+</body>
+</html>

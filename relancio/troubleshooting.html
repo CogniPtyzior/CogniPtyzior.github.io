@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Guide utilisateur Relancio : application desktop locale, messagerie, IA locale, accès web/mobile optionnel et confidentialité.">
+  <title>Dépannage et glossaire — Relancio</title>
+  <link rel="stylesheet" href="./css/relancio-docs.css">
+</head>
+<body class="">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Accueil Relancio">
+      <img src="./assets/relancio-logo-transparent.png" alt="Logo Relancio">
+      <span><strong>Relancio</strong><small>Guide utilisateur</small></span>
+    </a>
+    <nav class="top-links" aria-label="Liens auteur">
+      <a href="https://cogniptyzior.github.io/" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://www.linkedin.com/in/damien-farina/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    </nav>
+  </header>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Navigation du guide">
+      <button class="nav-toggle" type="button" aria-expanded="false">Sections du guide</button>
+      <nav class="side-nav"><a class="" href="index.html">Accueil</a><a class="" href="quick-start.html">Démarrage</a><a class="" href="desktop.html">Application</a><a class="" href="mail.html">Messagerie</a><a class="" href="ai-local.html">IA locale</a><a class="" href="kits.html">Kits</a><a class="" href="privacy.html">Confidentialité</a><a class="" href="mobile.html">Mobile</a><a class="active" href="troubleshooting.html">Dépannage</a><a class="" href="terms.html">Conditions</a></nav>
+    </aside>
+    <main class="content">
+      <section class="page-hero">
+        <p class="eyebrow">Relancio</p>
+        <h1>Dépannage et glossaire</h1>
+        <p>Résoudre les problèmes courants et comprendre les termes techniques.</p>
+      </section>
+      
+<section class="card"><h2>Problèmes courants</h2><div class="faq"><details open><summary>Le voyant IA n’est pas vert</summary><p>Vérifiez qu’Ollama est disponible, que l’adresse locale est correcte, que le modèle est installé et que le test d’assistance IA fonctionne. Si l’assistance IA locale n’est pas encore installée, utilisez l’installation automatique proposée dans l’onglet IA locale.</p></details><details><summary>Le voyant SMTP n’est pas vert</summary><p>Vérifiez serveur, port, sécurité, identifiant, mot de passe et mot de passe d’application éventuel. Lancez un email de test depuis l’onglet Envoi.</p></details><details><summary>Aucun mail n’apparaît</summary><p>Vérifiez la configuration POP3/IMAP, la fréquence de relève, le bouton Relever, et les identifiants du compte technique.</p></details><details><summary>L’accès web/mobile ne fonctionne pas</summary><p>Vérifiez que l’accès a été provisionné, que le mot de passe web/mobile est défini, que l’adresse privée est correcte et que le tunnel est actif lorsque l'accès distant est attendu.</p></details><details><summary>Gmail refuse la connexion</summary><p>Vérifiez les paramètres POP/IMAP du compte Google et utilisez un mot de passe d’application lorsque Gmail l’exige.</p></details></div></section>
+<section class="card"><h2>Glossaire rapide</h2><dl class="glossary"><dt>POP3</dt><dd>Mode de réception qui relève les messages d'une boîte mail.</dd><dt>IMAP</dt><dd>Mode de réception plus orienté synchronisation avec la boîte distante.</dd><dt>SMTP</dt><dd>Protocole utilisé pour envoyer les emails.</dd><dt>Ollama</dt><dd>Serveur IA local permettant d'utiliser des modèles génératifs sur le poste.</dd><dt>Provisioning</dt><dd>Association d'un poste Relancio à une adresse privée d'accès distant, via un code fourni par l'auteur.</dd><dt>Kit métier</dt><dd>Ensemble de règles et prompts adaptés à un contexte professionnel.</dd></dl></section>
+<section class="card"><h2>Apparence</h2><p>Relancio propose un choix de thème dans l'onglet <strong>Apparence</strong>. La documentation reprend le style sombre et bleu de l'application pour rester cohérente.</p><figure class="screenshot"><a href="./assets/screenshots/settings-apparence.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/settings-apparence.webp" alt="Paramètres Apparence" loading="lazy"></a><figcaption>Choix du thème de l’application.</figcaption></figure></section>
+
+    </main>
+  </div>
+  <button class="to-top" type="button" aria-label="Retour en haut">↑</button>
+  <script src="./js/relancio-docs.js"></script>
+</body>
+</html>

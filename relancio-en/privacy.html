@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Relancio user guide: local desktop app, email workflow, local AI, optional web/mobile access and privacy.">
+  <title>Privacy — Relancio</title>
+  <link rel="stylesheet" href="./css/relancio-docs.css">
+</head>
+<body class="">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Relancio home">
+      <img src="./assets/relancio-logo-transparent.png" alt="Relancio logo">
+      <span><strong>Relancio</strong><small>User guide</small></span>
+    </a>
+    <nav class="top-links" aria-label="Author and language links">
+      <a href="../relancio/" rel="noopener">Français</a>
+      <a href="https://cogniptyzior.github.io/" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://www.linkedin.com/in/damien-farina/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    </nav>
+  </header>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Guide navigation">
+      <button class="nav-toggle" type="button" aria-expanded="false">Guide sections</button>
+      <nav class="side-nav"><a class="" href="index.html">Home</a><a class="" href="quick-start.html">Quick start</a><a class="" href="desktop.html">Desktop app</a><a class="" href="mail.html">Email</a><a class="" href="ai-local.html">Local AI</a><a class="" href="kits.html">Kits</a><a class="active" href="privacy.html">Privacy</a><a class="" href="mobile.html">Mobile</a><a class="" href="troubleshooting.html">Troubleshooting</a><a class="" href="terms.html">Terms</a></nav>
+    </aside>
+    <main class="content">
+      <section class="page-hero">
+        <p class="eyebrow">Relancio</p>
+        <h1>Privacy</h1>
+        <p>What stays local, what the tunnel does not store, and important limits.</p>
+      </section>
+
+<section class="card"><h2>Local-first principle</h2><p>Relancio is designed to run on the user’s computer. Stored emails, drafts, replies, prompts, business rules, settings and AI data remain local.</p><div class="privacy-grid"><div><h3>Stays local</h3><ul><li>Saved emails</li><li>Replies and drafts</li><li>Prompts and business rules</li><li>Configuration</li><li>Data related to local AI</li></ul></div><div><h3>Leaves the computer only depending on use</h3><ul><li>Connection to configured mail servers</li><li>Email sent through SMTP</li><li>Private remote access if enabled</li></ul></div></div></section>
+<section class="card"><h2>Provisioning and tunnel</h2><p>The <code>.data</code> file associates the Relancio workstation with a private address and enables remote access when available. This access is provisioned by the author and may or may not be provided.</p><p>The tunnel is used to transport access to the Relancio workstation. It is not intended to read, modify or store your emails, replies, prompts, AI models or personal application data.</p><p>The private address becomes useful when the local site is started and the tunnel is active. For remote access, also define a password in the <strong>Mobile</strong> tab.</p><figure class="screenshot"><a href="./assets/screenshots/settings-provisioning.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/settings-provisioning.webp" alt="Provisioning settings" loading="lazy"></a><figcaption>Provisioning: importing the .data code, private subdomain and privacy reminder.</figcaption></figure></section>
+<section class="card"><h2>Incoming attachments</h2><p>Received or forwarded attachments are not stored or analyzed by Relancio. Only their names may be displayed or used as contextual hints.</p></section>
+<section class="card"><h2>Web/mobile password</h2><p>If web/mobile access is used, it is protected by the password defined in the <strong>Mobile</strong> tab. This password is stored locally as a hash.</p></section>
+
+    </main>
+  </div>
+  <button class="to-top" type="button" aria-label="Back to top">↑</button>
+  <script src="./js/relancio-docs.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Guide utilisateur Relancio : application desktop locale, messagerie, IA locale, accès web/mobile optionnel et confidentialité.">
+  <title>IA locale — Relancio</title>
+  <link rel="stylesheet" href="./css/relancio-docs.css">
+</head>
+<body class="">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Accueil Relancio">
+      <img src="./assets/relancio-logo-transparent.png" alt="Logo Relancio">
+      <span><strong>Relancio</strong><small>Guide utilisateur</small></span>
+    </a>
+    <nav class="top-links" aria-label="Liens auteur">
+      <a href="https://cogniptyzior.github.io/" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://www.linkedin.com/in/damien-farina/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    </nav>
+  </header>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Navigation du guide">
+      <button class="nav-toggle" type="button" aria-expanded="false">Sections du guide</button>
+      <nav class="side-nav"><a class="" href="index.html">Accueil</a><a class="" href="quick-start.html">Démarrage</a><a class="" href="desktop.html">Application</a><a class="" href="mail.html">Messagerie</a><a class="active" href="ai-local.html">IA locale</a><a class="" href="kits.html">Kits</a><a class="" href="privacy.html">Confidentialité</a><a class="" href="mobile.html">Mobile</a><a class="" href="troubleshooting.html">Dépannage</a><a class="" href="terms.html">Conditions</a></nav>
+    </aside>
+    <main class="content">
+      <section class="page-hero">
+        <p class="eyebrow">Relancio</p>
+        <h1>IA locale</h1>
+        <p>Comprendre Ollama, les modèles locaux, le timeout et la régénération.</p>
+      </section>
+      
+<section class="card"><h2>Comprendre l’IA locale</h2><p>Relancio s'appuie sur Ollama pour interroger un modèle installé sur le poste de l'utilisateur. L'adresse locale typique est <code>http://localhost:11434</code>.</p><p>Le modèle reçoit les informations utiles du mail et les règles métier locales afin de produire une proposition de réponse. Cette proposition reste modifiable et doit être validée par l'utilisateur.</p></section>
+<figure class="screenshot"><a href="./assets/screenshots/settings-ia-locale.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/settings-ia-locale.webp" alt="Paramètres IA locale" loading="lazy"></a><figcaption>Onglet IA locale : adresse Ollama, modèle, timeout, tests et état de l’assistance.</figcaption></figure>
+<section class="card"><h2>Installation de l’assistance IA</h2><p>Si l'assistance IA locale n'est pas encore installée, Relancio propose une installation automatique. Si cette installation ne fonctionne pas sur le poste, vous pouvez télécharger Ollama depuis le site officiel, puis revenir dans Relancio pour actualiser les modèles.</p><figure class="screenshot"><a href="./assets/screenshots/settings-ia-locale-installation.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/settings-ia-locale-installation.webp" alt="Installation de l’assistance IA locale" loading="lazy"></a><figcaption>État IA non installée : installation automatique, test, modèles recommandés et fallback manuel Ollama.</figcaption></figure></section>
+<section class="grid cards-2"><article class="card"><h2>Timeout et fallback</h2><p>Le timeout définit combien de temps Relancio attend la réponse du modèle. Si Ollama ne répond pas ou dépasse le délai, Relancio n’envoie rien automatiquement : vous pouvez corriger manuellement, sauvegarder ou relancer une génération.</p></article><article class="card"><h2>Régénérer</h2><p>Le bouton <strong>Régénérer</strong> redemande une proposition à l’IA locale pour le mail sélectionné. Il est utile après modification du contexte ou si la première réponse n’est pas satisfaisante.</p></article></section>
+<section class="note important"><h2>Responsabilité de validation</h2><p>Une IA générative peut produire une réponse inexacte, incomplète ou mal adaptée. Relisez toujours le contenu, l’objet et le destinataire avant d’envoyer.</p></section>
+
+    </main>
+  </div>
+  <button class="to-top" type="button" aria-label="Retour en haut">↑</button>
+  <script src="./js/relancio-docs.js"></script>
+</body>
+</html>

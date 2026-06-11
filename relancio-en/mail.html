@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Relancio user guide: local desktop app, email workflow, local AI, optional web/mobile access and privacy.">
+  <title>Email — Relancio</title>
+  <link rel="stylesheet" href="./css/relancio-docs.css">
+</head>
+<body class="">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Relancio home">
+      <img src="./assets/relancio-logo-transparent.png" alt="Relancio logo">
+      <span><strong>Relancio</strong><small>User guide</small></span>
+    </a>
+    <nav class="top-links" aria-label="Author and language links">
+      <a href="../relancio/" rel="noopener">Français</a>
+      <a href="https://cogniptyzior.github.io/" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://www.linkedin.com/in/damien-farina/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    </nav>
+  </header>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Guide navigation">
+      <button class="nav-toggle" type="button" aria-expanded="false">Guide sections</button>
+      <nav class="side-nav"><a class="" href="index.html">Home</a><a class="" href="quick-start.html">Quick start</a><a class="" href="desktop.html">Desktop app</a><a class="active" href="mail.html">Email</a><a class="" href="ai-local.html">Local AI</a><a class="" href="kits.html">Kits</a><a class="" href="privacy.html">Privacy</a><a class="" href="mobile.html">Mobile</a><a class="" href="troubleshooting.html">Troubleshooting</a><a class="" href="terms.html">Terms</a></nav>
+    </aside>
+    <main class="content">
+      <section class="page-hero">
+        <p class="eyebrow">Relancio</p>
+        <h1>Email</h1>
+        <p>Configure POP3/IMAP reception, SMTP sending, Gmail and attachments.</p>
+      </section>
+
+<section class="card"><h2>POP3 / IMAP reception</h2><p>Relancio uses a reception account that you control. You choose the reception mode, server, port, security, username and password.</p><ul><li>POP3 is often suitable for simple retrieval.</li><li>IMAP may be preferable if the provider or your workflow relies on a synchronized mailbox.</li><li>The <strong>Test connection</strong> button lets you verify the settings before use.</li><li>Retrieval can be automatic or manual with the <strong>Retrieve</strong> button.</li><li>The automatic retrieval frequency can be configured according to the desired rhythm.</li></ul><figure class="screenshot"><a href="./assets/screenshots/settings-reception.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/settings-reception.webp" alt="Reception settings" loading="lazy"></a><figcaption>Reception configuration: mode, server, port, security, username, password, retrieval frequency and connection test.</figcaption></figure></section>
+<section class="card"><h2>SMTP sending</h2><p>Sending goes through the SMTP server configured in the <strong>Sending</strong> tab. Relancio will send replies from this mailbox.</p><ul><li>Enter the server, port, security, sending address, username and password.</li><li>Use the <strong>Send a test email</strong> button to verify the configuration before real use.</li><li>Replies are only sent after an explicit action on <strong>Send</strong>.</li></ul><figure class="screenshot"><a href="./assets/screenshots/settings-envoi.webp" target="_blank" rel="noopener"><img src="./assets/screenshots/settings-envoi.webp" alt="SMTP sending settings" loading="lazy"></a><figcaption>SMTP configuration and test email sending.</figcaption></figure></section>
+<section class="card"><h2>Gmail and email providers</h2><p>Gmail can work with POP or IMAP depending on the chosen configuration. Exact settings depend on the provider. In many cases, Gmail requires an <strong>app password</strong> instead of the usual account password, especially when two-step verification is enabled.</p><div class="callout"><strong>Gmail POP example:</strong> server <code>pop.gmail.com</code>, port <code>995</code>, security <strong>SSL/TLS</strong>, full username and app password.</div></section>
+<section class="card"><h2>Attachments</h2><p>Attachments added to a reply are linked to the outgoing draft. Incoming or forwarded attachments, however, are not stored permanently or analyzed by Relancio.</p><div class="note"><strong>Important limit:</strong> Relancio may display or use the names of incoming attachments as contextual information, but it does not read their content to generate the reply.</div></section>
+
+    </main>
+  </div>
+  <button class="to-top" type="button" aria-label="Back to top">↑</button>
+  <script src="./js/relancio-docs.js"></script>
+</body>
+</html>
