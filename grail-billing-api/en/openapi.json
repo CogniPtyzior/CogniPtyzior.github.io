@@ -1,0 +1,1068 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Grail Billing API Reference",
+    "version": "1.0.0",
+    "description": "## Overview\n\nGrail Billing is a demonstration billing API built with Express, TypeScript, MongoDB and Mongoose. It showcases hexagonal architecture, pragmatic DDD, bounded contexts, JWT authentication, deterministic demo data, runtime observability and Docker deployment practices.\n\n## Reading flow\n\n1. Request a Bearer token with `POST /api/auth/token`.\n2. Use the token on protected `/api/*` routes.\n3. Create companies, customers, tax rates and products.\n4. Create a draft invoice.\n5. Issue it to lock invoice details and assign a company invoice reference.\n6. Register payments and read the updated invoice status."
+  },
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Token issuance and admin-only API user management for protected API access."
+    },
+    {
+      "name": "Observability",
+      "description": "Public liveness/readiness endpoints plus admin-only in-memory runtime metrics for the current API process."
+    },
+    {
+      "name": "Billing / Invoices",
+      "description": "Core billing workflow: draft invoices, official issuance, locked customer and issuer details, payments and searchable status."
+    },
+    {
+      "name": "Companies",
+      "description": "Issuing companies used by Billing to freeze legal identity and legal mentions when invoices are finalized."
+    },
+    {
+      "name": "Customers",
+      "description": "Bill-to customers used by Billing when invoices are issued."
+    },
+    {
+      "name": "Catalog / Products",
+      "description": "Products selectable on invoice lines, including default tax-rate references and active-state filtering."
+    },
+    {
+      "name": "Reference Data / Tax Rates",
+      "description": "Tax-rate references used by products and invoice lines. The demo includes deterministic French VAT data."
+    }
+  ],
+  "security": [
+    {
+      "BearerToken": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Paste the access token returned by POST /api/auth/token."
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/token": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sign in and get an access token",
+        "description": "Authenticates a user and returns a Bearer token. Use this token in the Authorization header for protected endpoints.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "demo"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "<AUTH_DEMO_PASSWORD>"
+                  }
+                }
+              },
+              "example": {
+                "username": "demo",
+                "password": "<AUTH_DEMO_PASSWORD>"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bearer token issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "accessToken",
+                    "tokenType",
+                    "expiresIn"
+                  ],
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "tokenType": {
+                      "type": "string",
+                      "example": "Bearer"
+                    },
+                    "expiresIn": {
+                      "type": "number",
+                      "example": 14400
+                    }
+                  }
+                },
+                "example": {
+                  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                  "tokenType": "Bearer",
+                  "expiresIn": 14400
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials"
+          },
+          "429": {
+            "description": "Too many token requests"
+          }
+        },
+        "operationId": "issueBearerToken"
+      }
+    },
+    "/api/auth/users": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Review API user accounts",
+        "description": "Returns the API accounts that can authenticate against the demo. This endpoint is reserved for administrators.",
+        "responses": {
+          "200": {
+            "description": "User list",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "id": "user-admin",
+                      "username": "admin",
+                      "role": "admin",
+                      "active": true
+                    },
+                    {
+                      "id": "user-demo",
+                      "username": "demo",
+                      "role": "demo",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin role required"
+          }
+        },
+        "operationId": "listApiUsers"
+      },
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Create an API user account",
+        "description": "Creates a new API account with a role and an active status. The password is hashed before storage.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "username": "auditor",
+                "password": "<new-user-password>",
+                "role": "demo",
+                "active": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "409": {
+            "description": "Username already exists"
+          }
+        },
+        "operationId": "createApiUser"
+      }
+    },
+    "/api/auth/users/{userId}": {
+      "patch": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Update an API user account",
+        "description": "Updates an API account, for example to rotate its password, change its role or deactivate access.",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "user-auditor"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "active": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "operationId": "updateApiUser"
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Observability"
+        ],
+        "summary": "Check whether the API is running",
+        "description": "Lightweight liveness check. A successful response means the HTTP process is up.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API process is alive",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "checkLiveness"
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "Observability"
+        ],
+        "summary": "Check whether the API is ready",
+        "description": "Readiness check for operational traffic. It verifies that the application has completed startup and can reach MongoDB.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API is ready to serve traffic",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ready",
+                  "checks": {
+                    "mongo": "ok",
+                    "bootstrap": "ok"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "API process is alive but not ready",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "not_ready",
+                  "checks": {
+                    "mongo": "unavailable",
+                    "bootstrap": "pending"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "checkReadiness"
+      }
+    },
+    "/api/metrics": {
+      "get": {
+        "tags": [
+          "Observability"
+        ],
+        "summary": "View runtime metrics",
+        "description": "Returns operational counters for the current API process, including HTTP traffic, authentication and rate limiting activity. This endpoint is reserved for administrators.",
+        "security": [
+          {
+            "BearerToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Runtime metrics locked invoice detail",
+            "content": {
+              "application/json": {
+                "example": {
+                  "startedAt": "2026-06-16T20:00:00.000Z",
+                  "uptimeSeconds": 3600,
+                  "http": {
+                    "requestsTotal": 42,
+                    "errorsTotal": 1,
+                    "averageDurationMs": 18,
+                    "responsesByStatus": {
+                      "200": 35,
+                      "401": 3,
+                      "500": 1
+                    },
+                    "lastRequestAt": "2026-06-16T21:00:00.000Z"
+                  },
+                  "auth": {
+                    "tokensIssuedTotal": 4,
+                    "invalidCredentialsTotal": 1
+                  },
+                  "rateLimit": {
+                    "hitsTotal": 0
+                  },
+                  "demoReset": {
+                    "lastRunAt": "2026-06-16T20:30:00.000Z",
+                    "lastStatus": "success"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid Bearer token"
+          },
+          "403": {
+            "description": "Authenticated user is not an admin"
+          }
+        },
+        "operationId": "readRuntimeMetrics"
+      }
+    },
+    "/api/billing/invoices": {
+      "get": {
+        "tags": [
+          "Billing / Invoices"
+        ],
+        "summary": "Search invoices",
+        "description": "Searches invoices with optional filters such as issuer, customer, invoice status, payment status and pagination.",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "company-aurora"
+          },
+          {
+            "name": "customerId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "customer-nova"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "issued"
+              ]
+            },
+            "example": "draft"
+          },
+          {
+            "name": "paymentStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "unpaid",
+                "partially_paid",
+                "paid"
+              ]
+            },
+            "example": "unpaid"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 50
+            },
+            "example": 50
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0
+            },
+            "example": 0
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invoice list",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "id": "invoice-example-issued",
+                      "status": "issued",
+                      "paymentStatus": "unpaid",
+                      "companyId": "company-aurora",
+                      "customerId": "customer-nova",
+                      "totalIncludingTax": 1800,
+                      "currency": "EUR"
+                    }
+                  ],
+                  "paging": {
+                    "limit": 50,
+                    "offset": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "listInvoices"
+      },
+      "post": {
+        "tags": [
+          "Billing / Invoices"
+        ],
+        "summary": "Create a draft invoice",
+        "description": "Creates a draft invoice that can still be reviewed or corrected before it is legally issued.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "customerId": "customer-nova",
+                "companyId": "company-aurora",
+                "description": "Invoice for API development services",
+                "lines": [
+                  {
+                    "productId": "product-api-platform",
+                    "label": "API development",
+                    "description": "Node.js Express billing API development",
+                    "quantity": 2,
+                    "unitPrice": 750,
+                    "taxRate": 20
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Draft invoice created"
+          },
+          "400": {
+            "description": "Invalid body"
+          }
+        },
+        "operationId": "createDraftInvoice"
+      }
+    },
+    "/api/billing/invoices/{invoiceId}": {
+      "get": {
+        "tags": [
+          "Billing / Invoices"
+        ],
+        "summary": "View an invoice",
+        "description": "Returns the invoice visible to API consumers: status, totals, customer, issuer and legal information once the invoice has been issued.",
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "invoice-demo-issued"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invoice details",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "invoice-example-issued",
+                  "status": "issued",
+                  "reference": "2026-0001",
+                  "customerSnapshot": {
+                    "id": "customer-nova",
+                    "name": "Nova Retail"
+                  },
+                  "companySnapshot": {
+                    "id": "company-aurora",
+                    "legalName": "Aurora Consulting SAS"
+                  },
+                  "totals": {
+                    "excludingTax": 1500,
+                    "tax": 300,
+                    "includingTax": 1800,
+                    "currency": "EUR"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invoice not found"
+          }
+        },
+        "operationId": "getInvoiceDetails"
+      }
+    },
+    "/api/billing/invoices/{invoiceId}/finalize": {
+      "post": {
+        "tags": [
+          "Billing / Invoices"
+        ],
+        "summary": "Issue a draft invoice",
+        "description": "Issues a draft invoice. This assigns the official invoice reference, locks the customer and issuer information, and makes the invoice immutable.",
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "invoice-demo-draft"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Invoice finalized"
+          },
+          "404": {
+            "description": "Invoice not found"
+          },
+          "422": {
+            "description": "Business rule error"
+          }
+        },
+        "operationId": "finalizeInvoice"
+      }
+    },
+    "/api/billing/invoices/{invoiceId}/payments": {
+      "post": {
+        "tags": [
+          "Billing / Invoices"
+        ],
+        "summary": "Record an invoice payment",
+        "description": "Records a payment against an issued invoice. Reusing the same external reference is treated safely to avoid duplicate payment registration.",
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "invoice-demo-issued"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "amount": 1800,
+                "method": "bank_transfer",
+                "paidAt": "2026-06-15T10:00:00.000Z",
+                "externalReference": "BANK-TRANSFER-001"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Payment registered"
+          },
+          "400": {
+            "description": "Invalid body"
+          },
+          "404": {
+            "description": "Invoice not found"
+          },
+          "422": {
+            "description": "Business rule error"
+          }
+        },
+        "operationId": "registerInvoicePayment"
+      }
+    },
+    "/api/catalog/products": {
+      "get": {
+        "tags": [
+          "Catalog / Products"
+        ],
+        "summary": "List billable products",
+        "description": "Lists products or services that can be selected when creating invoice lines.",
+        "parameters": [
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "example": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product list",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "id": "product-api-platform",
+                      "name": "API platform delivery",
+                      "unitPrice": 750,
+                      "currency": "EUR",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operationId": "listProducts"
+      },
+      "post": {
+        "tags": [
+          "Catalog / Products"
+        ],
+        "summary": "Create a billable product",
+        "description": "Creates a billable product with a default price, currency and tax-rate reference.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "id": "product-api-platform",
+                "name": "Architecture workshop",
+                "description": "DDD and hexagonal architecture workshop",
+                "unitPrice": 750,
+                "currency": "EUR",
+                "defaultTaxRateId": "tax-fr-vat-20",
+                "active": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created"
+          },
+          "400": {
+            "description": "Invalid body"
+          }
+        },
+        "operationId": "createProduct"
+      }
+    },
+    "/api/catalog/products/{productId}": {
+      "get": {
+        "tags": [
+          "Catalog / Products"
+        ],
+        "summary": "View a billable product",
+        "description": "Returns one billable product or service.",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "product-api-platform"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product details"
+          },
+          "404": {
+            "description": "Product not found"
+          }
+        },
+        "operationId": "getProduct"
+      }
+    },
+    "/api/companies": {
+      "get": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "List invoice issuers",
+        "description": "Lists organizations that can issue invoices through the API.",
+        "responses": {
+          "200": {
+            "description": "Company list",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "id": "company-aurora",
+                      "name": "Aurora Consulting",
+                      "legalName": "Aurora Consulting SAS",
+                      "vatNumber": "FR12345678901"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operationId": "listCompanies"
+      },
+      "post": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "Create an invoice issuer",
+        "description": "Creates an invoice issuer with legal identity, billing address and legal mentions.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "id": "company-aurora",
+                "name": "Grail Billing",
+                "legalName": "Aurora Consulting SAS",
+                "vatNumber": "FR12345678901",
+                "address": {
+                  "line1": "1 avenue de l'Architecture",
+                  "postalCode": "75002",
+                  "city": "Paris",
+                  "country": "FR"
+                },
+                "legalMentions": [
+                  "Payment due within 30 days."
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Company created"
+          },
+          "400": {
+            "description": "Invalid body"
+          }
+        },
+        "operationId": "createCompany"
+      }
+    },
+    "/api/companies/{companyId}": {
+      "get": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "View an invoice issuer",
+        "description": "Returns one invoice issuer and the legal information used when invoices are issued.",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "company-aurora"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Company details"
+          },
+          "404": {
+            "description": "Company not found"
+          }
+        },
+        "operationId": "getCompany"
+      }
+    },
+    "/api/customers": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "List billing customers",
+        "description": "Lists customers that can receive invoices.",
+        "responses": {
+          "200": {
+            "description": "Customer list",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "id": "customer-nova",
+                      "name": "Nova Retail",
+                      "email": "billing@nova-retail.test"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operationId": "listCustomers"
+      },
+      "post": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Create a billing customer",
+        "description": "Creates a customer billing profile with contact information and billing address.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "id": "customer-nova",
+                "name": "Nova Retail",
+                "email": "billing@nova-retail.test",
+                "billingAddress": {
+                  "line1": "10 rue Victor Hugo",
+                  "postalCode": "75001",
+                  "city": "Paris",
+                  "country": "FR"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Customer created"
+          },
+          "400": {
+            "description": "Invalid body"
+          }
+        },
+        "operationId": "createCustomer"
+      }
+    },
+    "/api/customers/{customerId}": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "View a billing customer",
+        "description": "Returns one customer billing profile.",
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "customer-nova"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer details"
+          },
+          "404": {
+            "description": "Customer not found"
+          }
+        },
+        "operationId": "getCustomer"
+      }
+    },
+    "/api/reference-data/tax-rates": {
+      "get": {
+        "tags": [
+          "Reference Data / Tax Rates"
+        ],
+        "summary": "List tax rates",
+        "description": "Lists tax rates available for products and invoice lines, optionally filtered by country or active status.",
+        "parameters": [
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "FR"
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "example": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tax rate list",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "id": "tax-fr-vat-20",
+                      "name": "French standard VAT",
+                      "rate": 20,
+                      "country": "FR",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operationId": "listTaxRates"
+      },
+      "post": {
+        "tags": [
+          "Reference Data / Tax Rates"
+        ],
+        "summary": "Create a tax rate",
+        "description": "Creates a tax rate reference that can be attached to products and invoice lines.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "id": "tax-fr-vat-20",
+                "name": "French standard VAT",
+                "rate": 20,
+                "country": "FR",
+                "active": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tax rate created"
+          },
+          "400": {
+            "description": "Invalid body"
+          }
+        },
+        "operationId": "createTaxRate"
+      }
+    },
+    "/api/reference-data/tax-rates/{taxRateId}": {
+      "get": {
+        "tags": [
+          "Reference Data / Tax Rates"
+        ],
+        "summary": "View a tax rate",
+        "description": "Returns one tax rate reference.",
+        "parameters": [
+          {
+            "name": "taxRateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "tax-fr-vat-20"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tax rate details"
+          },
+          "404": {
+            "description": "Tax rate not found"
+          }
+        },
+        "operationId": "getTaxRate"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:6001",
+      "description": "Local demo API server"
+    }
+  ],
+  "x-tagGroups": [
+    {
+      "name": "Getting started",
+      "tags": [
+        "Auth",
+        "Observability"
+      ]
+    },
+    {
+      "name": "Business workflow",
+      "tags": [
+        "Billing / Invoices"
+      ]
+    },
+    {
+      "name": "Supporting contexts",
+      "tags": [
+        "Companies",
+        "Customers",
+        "Catalog / Products",
+        "Reference Data / Tax Rates"
+      ]
+    }
+  ]
+}

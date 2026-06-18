@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Référence OpenAPI statique de Grail Billing, une API de facturation en architecture propre avec Express, TypeScript et MongoDB." />
+    <title>Référence API Grail Billing</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='%2345e0cd'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="../assets/grail-api-reference.css?v=20260618-iframe" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <section class="hero" aria-labelledby="page-title">
+        <div class="hero__content">
+          <div class="topbar">
+            <a class="brand" href="https://cogniptyzior.github.io/" target="_blank" rel="noopener">
+              <span class="brand__mark" aria-hidden="true"></span>
+              <span>Damien Farina</span>
+            </a>
+            <a class="lang-link" href="../en/">English</a>
+          </div>
+
+          <p class="eyebrow">Référence API Portfolio</p>
+          <h1 id="page-title">API Grail Billing</h1>
+          <p class="lead">Une API de facturation en architecture propre qui démontre frontières DDD, persistance MongoDB, authentification JWT et readiness opérationnelle.</p>
+
+          <div class="chips" aria-label="Technology highlights">
+            <span class="chip">Architecture hexagonale</span><span class="chip">DDD</span><span class="chip">Express</span><span class="chip">MongoDB</span><span class="chip">OpenAPI</span><span class="chip">Docker</span>
+          </div>
+
+          <nav class="actions" aria-label="Project links">
+            <a class="button button--primary" href="#api-reference-section">Ouvrir la référence API</a>
+            <a class="button" href="https://cogniptyzior.github.io/" target="_blank" rel="noopener">Voir le portfolio</a>
+            <a class="button" href="https://github.com/CogniPtyzior" target="_blank" rel="noopener">GitHub</a>
+            <a class="button" href="https://github.com/CogniPtyzior/GrailBilling" target="_blank" rel="noopener">Repository</a>
+            <a class="button" href="https://www.linkedin.com/in/damien-farina/" target="_blank" rel="noopener">LinkedIn</a>
+          </nav>
+        </div>
+
+        <aside class="summary-card" aria-labelledby="summary-title">
+          <h2 id="summary-title">Architecture de démonstration</h2>
+          <dl class="summary-list">
+            
+          <div>
+            <dt>Runtime</dt>
+            <dd>Node.js, Express, TypeScript</dd>
+          </div>
+          <div>
+            <dt>Persistance</dt>
+            <dd>MongoDB, Mongoose, indexes et compteurs</dd>
+          </div>
+          <div>
+            <dt>Sécurité</dt>
+            <dd>Bearer JWT et gestion utilisateurs protégée admin</dd>
+          </div>
+          <div>
+            <dt>Opérations</dt>
+            <dd>Health, readiness, métriques et healthchecks Docker</dd>
+          </div>
+          </dl>
+        </aside>
+      </section>
+
+      <section class="section" aria-labelledby="highlights-title">
+        <div class="section__header">
+          <p class="eyebrow">Synthèse</p>
+          <h2 id="highlights-title">Ce que démontre cette API</h2>
+          <p>La référence ci-dessous est générée depuis la même source OpenAPI que Swagger, puis enrichie pour une lecture portfolio.</p>
+        </div>
+        <div class="highlight-grid">
+          
+        <article class="highlight-card">
+          <h3>Cycle de vie facture</h3>
+          <p>Brouillons, émission officielle, informations verrouillées, paiements et statut consultable.</p>
+        </article>
+        <article class="highlight-card">
+          <h3>Contexts bornés</h3>
+          <p>Auth, Billing, Companies, Customers, Catalog et Reference Data restent séparés.</p>
+        </article>
+        <article class="highlight-card">
+          <h3>Démo opérationnelle</h3>
+          <p>Readiness, métriques admin-only, healthchecks Docker et reset déterministe.</p>
+        </article>
+        <article class="highlight-card">
+          <h3>Workflow développeur</h3>
+          <p>Swagger reste concis pour les tests locaux ; cet export est optimisé pour la publication en lecture seule.</p>
+        </article>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="flow-title">
+        <div class="section__header">
+          <p class="eyebrow">Workflow</p>
+          <h2 id="flow-title">Parcours de lecture conseillé</h2>
+        </div>
+        <div class="flow-card">
+          <ol class="flow-list">
+            <li>S'authentifier avec un compte demo ou admin.</li><li>Créer les données support : company, customer, tax rate et product.</li><li>Créer une facture brouillon depuis des données de requête validées.</li><li>L'émettre pour verrouiller les informations et assigner une référence.</li><li>Enregistrer les paiements et lire la projection facture.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section" id="api-reference-section" aria-labelledby="api-title">
+        <div class="section__header">
+          <p class="eyebrow">Référence</p>
+          <h2 id="api-title">Référence API</h2>
+          <p>Parcourez les endpoints, exemples de requêtes, réponses et règles d'authentification depuis le document OpenAPI généré.</p>
+        </div>
+
+        <div class="api-reference-actions" aria-label="Reference and project links">
+          <a class="button" href="./reference.html?v=20260618-iframe" target="_blank" rel="noopener">
+            Ouvrir la référence en plein écran
+          </a>
+          <a class="button" href="https://cogniptyzior.github.io/" target="_blank" rel="noopener">
+            Portfolio
+          </a>
+          <a class="button" href="https://github.com/CogniPtyzior" target="_blank" rel="noopener">
+            GitHub
+          </a>
+          <a class="button" href="https://github.com/CogniPtyzior/GrailBilling" target="_blank" rel="noopener">
+            Repository
+          </a>
+          <a class="button" href="https://www.linkedin.com/in/damien-farina/" target="_blank" rel="noopener">
+            LinkedIn
+          </a>
+        </div>
+        <iframe
+          class="api-reference-frame"
+          src="./reference.html?v=20260618-iframe"
+          title="Référence API"
+          loading="lazy"
+        ></iframe>
+        <div class="api-fallback" id="api-reference-fallback">
+          <h3>La référence API n'a pas pu être chargée</h3>
+          <p>La référence API charge le document OpenAPI via le navigateur. Si cette page est ouverte directement comme fichier local, utilisez la route API /api/reference/fr/ ou ouvrez directement le document OpenAPI.</p>
+          <a href="./openapi.json">Ouvrir openapi.json</a>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p>Grail Billing API · OpenAPI 3 · Redoc 2.5.0</p>
+      </footer>
+    </div>
+
+  </body>
+</html>

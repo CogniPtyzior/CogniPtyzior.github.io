@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Référence API · Référence API Grail Billing</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='%2345e0cd'/%3E%3C/svg%3E" />
+    <style>
+      html,
+      body,
+      redoc {
+        display: block;
+        width: 100%;
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+        background: #ffffff;
+      }
+
+      body {
+        overflow-x: hidden;
+      }
+
+      .api-fallback {
+        display: none;
+        padding: 24px;
+        color: #1f2937;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .api-fallback[data-visible="true"] {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <redoc spec-url="./openapi.json"></redoc>
+    <noscript class="api-fallback" data-visible="true">
+      <h1>La référence API n'a pas pu être chargée</h1>
+      <p>La référence API charge le document OpenAPI via le navigateur. Si cette page est ouverte directement comme fichier local, utilisez la route API /api/reference/fr/ ou ouvrez directement le document OpenAPI.</p>
+      <a href="./openapi.json">Ouvrir openapi.json</a>
+    </noscript>
+
+    <script src="https://cdn.jsdelivr.net/npm/redoc@2.5.0/bundles/redoc.standalone.js"></script>
+  </body>
+</html>
