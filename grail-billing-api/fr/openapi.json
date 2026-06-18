@@ -321,7 +321,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Runtime metrics locked invoice detail",
+            "description": "Runtime metrics report",
             "content": {
               "application/json": {
                 "example": {

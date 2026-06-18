@@ -8,7 +8,7 @@
     <style>
       html,
       body,
-      redoc {
+      #redoc {
         display: block;
         width: 100%;
         min-width: 320px;
@@ -41,7 +41,7 @@
     </style>
   </head>
   <body>
-    <redoc spec-url="./openapi.json"></redoc>
+    <div id="redoc"></div>
     <noscript class="api-fallback" data-visible="true">
       <h1>La référence API n'a pas pu être chargée</h1>
       <p>La référence API charge le document OpenAPI via le navigateur. Si cette page est ouverte directement comme fichier local, utilisez la route API /api/reference/fr/ ou ouvrez directement le document OpenAPI.</p>
@@ -49,5 +49,7 @@
     </noscript>
 
     <script src="https://cdn.jsdelivr.net/npm/redoc@2.5.0/bundles/redoc.standalone.js"></script>
+    <script src="./openapi-document.js?v=20260618-iframe"></script>
+    <script src="../assets/grail-redoc-client.js?v=20260618-iframe"></script>
   </body>
 </html>
