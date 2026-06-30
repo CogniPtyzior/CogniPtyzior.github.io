@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Installation locale — Grail HR</title>
+  <meta name="description" content="Documentation publique de démonstration du prototype Grail HR.">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Aller au contenu</a>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="index.html" aria-label="Grail HR">
+      <img class="profile-avatar" src="assets/img/profile.webp" alt="Photo de profil de Damien Farina">
+      <span><span class="brand-title">Grail HR</span><span class="brand-sub">Prototype IA RH · Documentation publique</span></span>
+    </a>
+    <nav class="top-nav" aria-label="Liens principaux">
+      <a href="https://cogniptyzior.github.io/">Portfolio</a>
+      <a href="https://github.com/CogniPtyzior/Grail-HR">Repo GitHub</a>
+      <a href="https://www.linkedin.com/in/damien-farina/">LinkedIn</a>
+      <a class="lang-link" href="../grail-hr-en/setup.html" hreflang="en">English</a>
+      <button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false">Menu</button>
+    </nav>
+  </div>
+</header>
+<div class="docs-shell">
+  <aside class="sidebar" aria-label="Navigation documentation">
+    <div class="sidebar-title">Documentation</div>
+    <nav class="sidebar-nav"><a href="index.html">Accueil</a>
+<a href="features.html">Fonctionnalités</a>
+<a href="workflow.html">Parcours utilisateur</a>
+<a href="architecture.html">Architecture</a>
+<a href="admin.html">Administration</a>
+<a href="setup.html">Installation locale</a>
+<a href="api.html">API REST</a>
+<a href="security.html">Sécurité &amp; données</a>
+<a href="troubleshooting.html">Dépannage</a>
+<a href="changelog.html">Évolutions</a></nav>
+  </aside>
+  <main id="content" class="main">
+<section class="section reveal"><span class="eyebrow">Installation locale</span><h1 class="page-title">Un environnement local pensé pour WSL, Docker Desktop et DDEV.</h1><p class="lead">Le dépôt se lance comme un projet WordPress DDEV avec un frontend Nuxt indépendant.</p></section><section class="section reveal"><h2>URLs locales</h2><div class="grid cols-3"><div class="card"><h3>WordPress admin</h3><p><span class="kbd">https://grail-hr.ddev.site/wp-admin</span></p></div><div class="card"><h3>API REST</h3><p><span class="kbd">https://grail-hr.ddev.site/wp-json/grail-hr/v1</span></p></div><div class="card"><h3>Nuxt</h3><p><span class="kbd">http://localhost:3000</span></p></div></div></section><section class="section reveal"><h2>Démarrage</h2><pre><code>cd /mnt/c/Users/&lt;user&gt;/Desktop/Dev/Grail-HR
+ddev start
+ddev launch /wp-admin</code></pre><pre><code>cd wp-content/plugins/grail-hr/frontend/nuxt
+npm install
+npm run dev</code></pre><div class="callout"><strong>Pré-requis recommandés</strong><p>Windows 11, WSL2/Ubuntu, Docker Desktop avec intégration WSL, DDEV installé côté Ubuntu, Composer et Node.js via nvm.</p></div></section>
+  </main>
+</div>
+<footer class="footer"><div class="footer-inner">Prototype fonctionnel développé comme démonstration produit et technique. Données fictives uniquement.</div></footer>
+<script src="assets/js/docs.js" defer></script>
+</body>
+</html>

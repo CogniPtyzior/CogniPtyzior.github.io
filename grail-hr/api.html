@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API REST — Grail HR</title>
+  <meta name="description" content="Documentation publique de démonstration du prototype Grail HR.">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Aller au contenu</a>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="index.html" aria-label="Grail HR">
+      <img class="profile-avatar" src="assets/img/profile.webp" alt="Photo de profil de Damien Farina">
+      <span><span class="brand-title">Grail HR</span><span class="brand-sub">Prototype IA RH · Documentation publique</span></span>
+    </a>
+    <nav class="top-nav" aria-label="Liens principaux">
+      <a href="https://cogniptyzior.github.io/">Portfolio</a>
+      <a href="https://github.com/CogniPtyzior/Grail-HR">Repo GitHub</a>
+      <a href="https://www.linkedin.com/in/damien-farina/">LinkedIn</a>
+      <a class="lang-link" href="../grail-hr-en/api.html" hreflang="en">English</a>
+      <button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false">Menu</button>
+    </nav>
+  </div>
+</header>
+<div class="docs-shell">
+  <aside class="sidebar" aria-label="Navigation documentation">
+    <div class="sidebar-title">Documentation</div>
+    <nav class="sidebar-nav"><a href="index.html">Accueil</a>
+<a href="features.html">Fonctionnalités</a>
+<a href="workflow.html">Parcours utilisateur</a>
+<a href="architecture.html">Architecture</a>
+<a href="admin.html">Administration</a>
+<a href="setup.html">Installation locale</a>
+<a href="api.html">API REST</a>
+<a href="security.html">Sécurité &amp; données</a>
+<a href="troubleshooting.html">Dépannage</a>
+<a href="changelog.html">Évolutions</a></nav>
+  </aside>
+  <main id="content" class="main">
+<section class="section reveal"><span class="eyebrow">API REST</span><h1 class="page-title">Une API sécurisée pour le frontend Nuxt.</h1><p class="lead">Le frontend consomme l’API du plugin avec un bearer token. Les permissions sont vérifiées côté serveur avant chaque action protégée.</p></section><section class="section reveal"><div class="table-wrap"><table><thead><tr><th>Endpoint</th><th>Usage</th></tr></thead><tbody><tr><td><code>POST /auth/login</code></td><td>Connexion avec identifiants WordPress et création d’un bearer token.</td></tr><tr><td><code>GET /me</code></td><td>Retourne l’utilisateur courant et ses permissions Grail HR.</td></tr><tr><td><code>GET /profiles</code></td><td>Liste paginée, filtrée et triée côté serveur.</td></tr><tr><td><code>POST /profiles</code></td><td>Création manuelle d’un profil éditable.</td></tr><tr><td><code>POST /profiles/from-cv</code></td><td>Création depuis CV PDF et analyse IA dans le même flux.</td></tr><tr><td><code>GET /profiles/{id}</code></td><td>Détail complet d’une fiche profil.</td></tr><tr><td><code>PUT /profiles/{id}</code></td><td>Mise à jour des données relues.</td></tr><tr><td><code>POST /profiles/{id}/validate</code></td><td>Validation humaine du profil.</td></tr><tr><td><code>POST /profiles/{id}/archive</code></td><td>Archivage du profil.</td></tr><tr><td><code>GET /analysis/status</code></td><td>Statut d’analyse et suivi côté frontend.</td></tr><tr><td><code>GET /exports/...</code></td><td>Export JSON ou CSV des profils autorisés.</td></tr></tbody></table></div><div class="callout"><strong>Authentification</strong><p>Le token est opaque côté client. Seul son hash est stocké côté WordPress.</p></div></section>
+  </main>
+</div>
+<footer class="footer"><div class="footer-inner">Prototype fonctionnel développé comme démonstration produit et technique. Données fictives uniquement.</div></footer>
+<script src="assets/js/docs.js" defer></script>
+</body>
+</html>

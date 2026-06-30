@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fonctionnalités — Grail HR</title>
+  <meta name="description" content="Documentation publique de démonstration du prototype Grail HR.">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Aller au contenu</a>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="index.html" aria-label="Grail HR">
+      <img class="profile-avatar" src="assets/img/profile.webp" alt="Photo de profil de Damien Farina">
+      <span><span class="brand-title">Grail HR</span><span class="brand-sub">Prototype IA RH · Documentation publique</span></span>
+    </a>
+    <nav class="top-nav" aria-label="Liens principaux">
+      <a href="https://cogniptyzior.github.io/">Portfolio</a>
+      <a href="https://github.com/CogniPtyzior/Grail-HR">Repo GitHub</a>
+      <a href="https://www.linkedin.com/in/damien-farina/">LinkedIn</a>
+      <a class="lang-link" href="../grail-hr-en/features.html" hreflang="en">English</a>
+      <button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false">Menu</button>
+    </nav>
+  </div>
+</header>
+<div class="docs-shell">
+  <aside class="sidebar" aria-label="Navigation documentation">
+    <div class="sidebar-title">Documentation</div>
+    <nav class="sidebar-nav"><a href="index.html">Accueil</a>
+<a href="features.html">Fonctionnalités</a>
+<a href="workflow.html">Parcours utilisateur</a>
+<a href="architecture.html">Architecture</a>
+<a href="admin.html">Administration</a>
+<a href="setup.html">Installation locale</a>
+<a href="api.html">API REST</a>
+<a href="security.html">Sécurité &amp; données</a>
+<a href="troubleshooting.html">Dépannage</a>
+<a href="changelog.html">Évolutions</a></nav>
+  </aside>
+  <main id="content" class="main">
+<section class="section reveal"><span class="eyebrow">Fonctionnalités</span><h1 class="page-title">Un flux complet pour transformer un CV en fiche exploitable.</h1><p class="lead">Le prototype couvre le cycle principal : importer, analyser, relire, corriger, valider, archiver et exporter.</p></section><section class="section reveal"><div class="grid cols-3"><div class="card"><div class="icon">1</div><h3>Import CV sécurisé</h3><p>PDF uniquement, 5 Mo maximum. Le CV source et le texte extrait ne sont pas conservés après analyse.</p></div><div class="card"><div class="icon">2</div><h3>Création manuelle</h3><p>Un profil peut être créé sans CV, puis enrichi manuellement par l’équipe.</p></div><div class="card"><div class="icon">3</div><h3>Analyse OpenAI</h3><p>Le backend appelle OpenAI avec un prompt et un schéma versionnés pour obtenir une réponse structurée.</p></div><div class="card"><div class="icon">4</div><h3>Relecture éditable</h3><p>Les informations extraites restent modifiables avant validation.</p></div><div class="card"><div class="icon">5</div><h3>Recherche et filtres</h3><p>La liste des profils combine recherche globale, statut, seniorité, tri et pagination serveur.</p></div><div class="card"><div class="icon">6</div><h3>Exports et logs</h3><p>L’admin WordPress fournit exports JSON/CSV, logs sécurisés et diagnostic technique.</p></div></div></section><figure class="screenshot-card reveal"><img src="assets/img/screenshots/create-profile.webp" alt="Écran de création de profil Grail HR" loading="lazy"><figcaption>Écran de création : l’utilisateur choisit entre import PDF et création manuelle.</figcaption></figure><figure class="screenshot-card reveal"><img src="assets/img/screenshots/profile-summary.webp" alt="Détail du profil candidat généré" loading="lazy"><figcaption>Fiche profil générée, relisible et éditable avant validation.</figcaption></figure>
+  </main>
+</div>
+<footer class="footer"><div class="footer-inner">Prototype fonctionnel développé comme démonstration produit et technique. Données fictives uniquement.</div></footer>
+<script src="assets/js/docs.js" defer></script>
+</body>
+</html>

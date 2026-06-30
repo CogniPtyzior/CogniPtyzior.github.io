@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Features — Grail HR</title>
+  <meta name="description" content="Public demo documentation for the Grail HR prototype.">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="index.html" aria-label="Grail HR">
+      <img class="profile-avatar" src="assets/img/profile.webp" alt="Damien Farina profile photo">
+      <span><span class="brand-title">Grail HR</span><span class="brand-sub">AI HR prototype · Public documentation</span></span>
+    </a>
+    <nav class="top-nav" aria-label="Main links">
+      <a href="https://cogniptyzior.github.io/">Portfolio</a>
+      <a href="https://github.com/CogniPtyzior/Grail-HR">GitHub repo</a>
+      <a href="https://www.linkedin.com/in/damien-farina/">LinkedIn</a>
+      <a class="lang-link" href="../grail-hr/features.html" hreflang="fr">Français</a>
+      <button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false">Menu</button>
+    </nav>
+  </div>
+</header>
+<div class="docs-shell">
+  <aside class="sidebar" aria-label="Documentation navigation">
+    <div class="sidebar-title">Documentation</div>
+    <nav class="sidebar-nav"><a href="index.html">Overview</a>
+<a href="features.html">Features</a>
+<a href="workflow.html">User journey</a>
+<a href="architecture.html">Architecture</a>
+<a href="admin.html">Administration</a>
+<a href="setup.html">Local setup</a>
+<a href="api.html">REST API</a>
+<a href="security.html">Security &amp; data</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<a href="changelog.html">Changelog</a></nav>
+  </aside>
+  <main id="content" class="main">
+<section class="section reveal"><span class="eyebrow">Features</span><h1 class="page-title">A complete flow to turn a resume into a usable profile.</h1><p class="lead">The prototype covers the core cycle: import, analyze, review, correct, validate, archive and export.</p></section><section class="section reveal"><div class="grid cols-3"><div class="card"><div class="icon">1</div><h3>Secure resume import</h3><p>PDF only, 5 MB maximum. The source resume and extracted raw text are not kept after analysis.</p></div><div class="card"><div class="icon">2</div><h3>Manual creation</h3><p>A profile can be created without a resume, then enriched manually by the team.</p></div><div class="card"><div class="icon">3</div><h3>OpenAI analysis</h3><p>The backend calls OpenAI with a versioned prompt and schema to receive structured output.</p></div><div class="card"><div class="icon">4</div><h3>Editable review</h3><p>Extracted information remains editable before validation.</p></div><div class="card"><div class="icon">5</div><h3>Search and filters</h3><p>The profile list combines global search, status, seniority, sorting and server-side pagination.</p></div><div class="card"><div class="icon">6</div><h3>Exports and logs</h3><p>The WordPress admin provides JSON/CSV exports, secured logs and technical diagnostics.</p></div></div></section><figure class="screenshot-card reveal"><img src="assets/img/screenshots/create-profile.webp" alt="Grail HR profile creation screen" loading="lazy"><figcaption>Creation screen: the user chooses between PDF import and manual profile creation.</figcaption></figure><figure class="screenshot-card reveal"><img src="assets/img/screenshots/profile-summary.webp" alt="Generated candidate profile detail" loading="lazy"><figcaption>Generated candidate profile, ready for review and editing before validation.</figcaption></figure>
+  </main>
+</div>
+<footer class="footer"><div class="footer-inner">Functional prototype built as a product and technical demo. Fictional data only.</div></footer>
+<script src="assets/js/docs.js" defer></script>
+</body>
+</html>

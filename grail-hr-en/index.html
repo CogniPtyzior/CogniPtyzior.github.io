@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Overview — Grail HR</title>
+  <meta name="description" content="Public demo documentation for the Grail HR prototype.">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="index.html" aria-label="Grail HR">
+      <img class="profile-avatar" src="assets/img/profile.webp" alt="Damien Farina profile photo">
+      <span><span class="brand-title">Grail HR</span><span class="brand-sub">AI HR prototype · Public documentation</span></span>
+    </a>
+    <nav class="top-nav" aria-label="Main links">
+      <a href="https://cogniptyzior.github.io/">Portfolio</a>
+      <a href="https://github.com/CogniPtyzior/Grail-HR">GitHub repo</a>
+      <a href="https://www.linkedin.com/in/damien-farina/">LinkedIn</a>
+      <a class="lang-link" href="../grail-hr/index.html" hreflang="fr">Français</a>
+      <button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false">Menu</button>
+    </nav>
+  </div>
+</header>
+<div class="docs-shell">
+  <aside class="sidebar" aria-label="Documentation navigation">
+    <div class="sidebar-title">Documentation</div>
+    <nav class="sidebar-nav"><a href="index.html">Overview</a>
+<a href="features.html">Features</a>
+<a href="workflow.html">User journey</a>
+<a href="architecture.html">Architecture</a>
+<a href="admin.html">Administration</a>
+<a href="setup.html">Local setup</a>
+<a href="api.html">REST API</a>
+<a href="security.html">Security &amp; data</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<a href="changelog.html">Changelog</a></nav>
+  </aside>
+  <main id="content" class="main">
+<section class="hero reveal"><span class="eyebrow">Prototype / Public demo</span><h1>Grail HR turns PDF resumes into structured candidate profiles.</h1><p class="lead">This prototype demonstrates an AI-assisted HR workflow: temporary resume import, structured analysis, human review, validation, administration and exports. It relies on a WordPress backend plugin and an independent Nuxt frontend.</p><div class="hero-actions"><a class="btn" href="workflow.html">View the user journey</a><a class="btn secondary" href="architecture.html">Explore the architecture</a></div></section>
+<section class="section reveal"><div class="grid cols-3"><div class="card"><div class="icon">AI</div><h3>Structured AI analysis</h3><p>The PDF resume is analyzed to produce a readable, editable and usable candidate profile.</p></div><div class="card"><div class="icon">UX</div><h3>Human validation</h3><p>The interface focuses on review, correction and validation by an authorized user.</p></div><div class="card"><div class="icon">API</div><h3>Controlled backend</h3><p>WordPress provides the API, administration, logs, exports and access management.</p></div></div></section>
+<figure class="screenshot-card reveal"><img src="assets/img/screenshots/profiles-list.webp" alt="Grail HR candidate profiles list" loading="lazy"><figcaption>Candidate profiles generated from resumes, with global search, filters, sorting and quick actions.</figcaption></figure>
+<section class="section reveal"><h2>A functional prototype, not a final product</h2><p>Grail HR is a public product and architecture demo. The data is fictional and the prototype is not intended for production use without security review, a full data-protection strategy, testing and business validation.</p><div class="callout warning"><strong>Known demo limits</strong><p>No public candidate portal, no OCR, no job matching, no candidate scoring and no automated decision-making. Human validation remains central.</p></div></section>
+  </main>
+</div>
+<footer class="footer"><div class="footer-inner">Functional prototype built as a product and technical demo. Fictional data only.</div></footer>
+<script src="assets/js/docs.js" defer></script>
+</body>
+</html>

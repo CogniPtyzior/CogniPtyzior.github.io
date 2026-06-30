@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Security &amp; data — Grail HR</title>
+  <meta name="description" content="Public demo documentation for the Grail HR prototype.">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="index.html" aria-label="Grail HR">
+      <img class="profile-avatar" src="assets/img/profile.webp" alt="Damien Farina profile photo">
+      <span><span class="brand-title">Grail HR</span><span class="brand-sub">AI HR prototype · Public documentation</span></span>
+    </a>
+    <nav class="top-nav" aria-label="Main links">
+      <a href="https://cogniptyzior.github.io/">Portfolio</a>
+      <a href="https://github.com/CogniPtyzior/Grail-HR">GitHub repo</a>
+      <a href="https://www.linkedin.com/in/damien-farina/">LinkedIn</a>
+      <a class="lang-link" href="../grail-hr/security.html" hreflang="fr">Français</a>
+      <button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false">Menu</button>
+    </nav>
+  </div>
+</header>
+<div class="docs-shell">
+  <aside class="sidebar" aria-label="Documentation navigation">
+    <div class="sidebar-title">Documentation</div>
+    <nav class="sidebar-nav"><a href="index.html">Overview</a>
+<a href="features.html">Features</a>
+<a href="workflow.html">User journey</a>
+<a href="architecture.html">Architecture</a>
+<a href="admin.html">Administration</a>
+<a href="setup.html">Local setup</a>
+<a href="api.html">REST API</a>
+<a href="security.html">Security &amp; data</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<a href="changelog.html">Changelog</a></nav>
+  </aside>
+  <main id="content" class="main">
+<section class="section reveal"><span class="eyebrow">Security & data</span><h1 class="page-title">Reduce sensitive data exposure and keep control server-side.</h1><p class="lead">The prototype avoids storing source resumes and extracted raw text. API keys and technical details remain on the server.</p></section><section class="section reveal"><div class="grid cols-2"><div class="card"><h3>Resumes are not kept</h3><p>The PDF is stored temporarily, text is extracted, then the file is deleted before the OpenAI call.</p></div><div class="card"><h3>Raw text is not persisted</h3><p>Extracted text is held in memory only during analysis.</p></div><div class="card"><h3>Server-side OpenAI key</h3><p>The key is configured in WordPress admin and is never exposed to the Nuxt frontend.</p></div><div class="card"><h3>Controlled access</h3><p>Users must be active for Grail HR. V1 access levels are recruiter and manager.</p></div></div><div class="callout warning"><strong>Prototype / demo</strong><p>Before production use, the project would require a security audit, formal data-protection policy, testing, log review and backup strategy.</p></div></section>
+  </main>
+</div>
+<footer class="footer"><div class="footer-inner">Functional prototype built as a product and technical demo. Fictional data only.</div></footer>
+<script src="assets/js/docs.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture — Grail HR</title>
+  <meta name="description" content="Public demo documentation for the Grail HR prototype.">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="index.html" aria-label="Grail HR">
+      <img class="profile-avatar" src="assets/img/profile.webp" alt="Damien Farina profile photo">
+      <span><span class="brand-title">Grail HR</span><span class="brand-sub">AI HR prototype · Public documentation</span></span>
+    </a>
+    <nav class="top-nav" aria-label="Main links">
+      <a href="https://cogniptyzior.github.io/">Portfolio</a>
+      <a href="https://github.com/CogniPtyzior/Grail-HR">GitHub repo</a>
+      <a href="https://www.linkedin.com/in/damien-farina/">LinkedIn</a>
+      <a class="lang-link" href="../grail-hr/architecture.html" hreflang="fr">Français</a>
+      <button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false">Menu</button>
+    </nav>
+  </div>
+</header>
+<div class="docs-shell">
+  <aside class="sidebar" aria-label="Documentation navigation">
+    <div class="sidebar-title">Documentation</div>
+    <nav class="sidebar-nav"><a href="index.html">Overview</a>
+<a href="features.html">Features</a>
+<a href="workflow.html">User journey</a>
+<a href="architecture.html">Architecture</a>
+<a href="admin.html">Administration</a>
+<a href="setup.html">Local setup</a>
+<a href="api.html">REST API</a>
+<a href="security.html">Security &amp; data</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<a href="changelog.html">Changelog</a></nav>
+  </aside>
+  <main id="content" class="main">
+<section class="section reveal"><span class="eyebrow">Architecture</span><h1 class="page-title">A clear split between WordPress backend and Nuxt frontend.</h1><p class="lead">WordPress acts as the business shell: REST API, admin, persistence, logs, settings and security. Nuxt provides an independent application frontend consuming that API.</p></section><section class="section reveal"><div class="diagram"><img src="assets/img/architecture.svg" alt="Grail HR architecture diagram"></div></section><section class="section reveal"><div class="grid cols-2"><div class="card"><h3>WordPress plugin</h3><p>The plugin handles authentication, profiles, workflow, exports, logs and OpenAI settings.</p></div><div class="card"><h3>Nuxt frontend</h3><p>The Nuxt app is an independent SPA. Locally, it runs on localhost:3000 and calls the WordPress REST API.</p></div><div class="card"><h3>OpenAI</h3><p>Resume analysis uses structured outputs to normalize extracted information.</p></div><div class="card"><h3>Persistence</h3><p>Profiles are indexed in WordPress. The source resume and extracted raw text are not persisted.</p></div></div></section><section class="section reveal"><h2>Business contexts</h2><div class="table-wrap"><table><thead><tr><th>Context</th><th>Responsibility</th></tr></thead><tbody><tr><td>IdentityAccess</td><td>Login, tokens, active users and permissions.</td></tr><tr><td>CvIntake</td><td>Temporary PDF upload, file validation and text extraction.</td></tr><tr><td>ProfileAnalysis</td><td>Prompting, OpenAI call, structured JSON and normalization.</td></tr><tr><td>ProfileManagement</td><td>CPT, workflow, exports, search and server-side tables.</td></tr><tr><td>Settings</td><td>OpenAI configuration, model, dev CORS and limits.</td></tr></tbody></table></div></section>
+  </main>
+</div>
+<footer class="footer"><div class="footer-inner">Functional prototype built as a product and technical demo. Fictional data only.</div></footer>
+<script src="assets/js/docs.js" defer></script>
+</body>
+</html>
