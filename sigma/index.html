@@ -8316,13 +8316,33 @@ function dcImpl(inp){if(inp.list)throw Error('Une équation F(x, y) = 0 est atte
  if(r.kind==='curve'){const y=r.dep,x=r.indep;blk('Dérivées de '+y+'('+x+')',dcLines([y+'′ = '+str(r.d1),y+'″ = '+str(r.d2)])+'<div class="ml hint">Théorème des fonctions implicites : valable là où ∂F/∂'+y+' = '+esc(str(r.Fy))+' ≠ 0.</div>');
   if(pt){if(!r.onCurve)B.push('<div class="ml hint">Attention : le point n’est pas sur la courbe F = 0.</div>');if(!r.regular)blk('Au point '+vecStr(pt),'<div class="ml">∂F/∂'+esc(y)+' = 0 : tangente verticale ou point singulier, le théorème ne s’applique pas.</div>');else blk('Au point '+vecStr(pt),dcLines([y+'′ = '+str(r.d1At),y+'″ = '+str(r.d2At)])+dcKV('Tangente :',y+' = '+str(r.tangent)))}
   lin=y+'′ = '+str(r.d1)+' ; '+y+'″ = '+str(r.d2)}
- else{blk('Dérivées de '+r.dep+'(x, y)',dcLines(['∂'+r.dep+'/∂'+vars[0]+' = '+str(r.zx),'∂'+r.dep+'/∂'+vars[1]+' = '+str(r.zy)])+'<div class="ml hint">Valable là où ∂F/∂'+esc(r.dep)+' = '+esc(str(r.Fz))+' ≠ 0.</div>');if(pt&&r.regular){blk('Au point '+vecStr(pt),dcLines(['∂'+r.dep+'/∂'+vars[0]+' = '+str(r.zxAt),'∂'+r.dep+'/∂'+vars[1]+' = '+str(r.zyAt)]));try{const tp=K.DC.tangentPlane(F,vars,pt,true);blk('Plan tangent',dcLines([str(tp.plane)+' = 0']))}catch(_){}}lin='∂'+r.dep+'/∂'+vars[0]+' = '+str(r.zx)+' ; ∂'+r.dep+'/∂'+vars[1]+' = '+str(r.zy)}
+ else{blk('Dérivées de '+r.dep+'(x, y)',dcLines(['∂'+r.dep+'/∂'+vars[0]+' = '+str(r.zx),'∂'+r.dep+'/∂'+vars[1]+' = '+str(r.zy)])+'<div class="ml hint">Valable là où ∂F/∂'+esc(r.dep)+' = '+esc(str(r.Fz))+' ≠ 0.</div>');if(pt&&r.regular){blk('Au point '+vecStr(pt),dcLines(['∂'+r.dep+'/∂'+vars[0]+' = '+str(r.zxAt),'∂'+r.dep+'/∂'+vars[1]+' = '+str(r.zyAt)]));try{const tp=K.DC.tangentPlane(F,vars,pt,true);blk('Plan tangent',dcLines([str(tp.plane)+' = 0']))}catch(_){}}B.push('<div class="ml hint">Graphique : lignes de niveau de la surface, c’est-à-dire les courbes F('+esc(vars[0])+', '+esc(vars[1])+', c) = 0 pour plusieurs hauteurs '+esc(r.dep)+' = c (carte topographique vue de dessus)'+(pt&&r.regular?' ; la flèche est ∇'+esc(r.dep)+', direction de plus forte montée.':'.')+'</div>');lin='∂'+r.dep+'/∂'+vars[0]+' = '+str(r.zx)+' ; ∂'+r.dep+'/∂'+vars[1]+' = '+str(r.zy)}
  richResult('dcOut',{label:'FONCTION IMPLICITE',html:B.join(''),linear:lin,notes:'Variables : '+vars.join(', ')+' (la dernière dépend des autres).'});
  if(vars.length===2){const fc=dcFn2(F,vars);const P={curves:[{f:fc,color:'#ffd166',width:2.8}],points:[],lines:[]};let view={x0:-4,x1:4,y0:-4,y1:4};
   // échelle : plus grand rayon R où F change de signe sur le cercle |(x, y)| = R
   {let best=0;for(const R of [1,2,4,8,16,32]){let ch=0,prev=null;for(let k=0;k<64;k++){const a=2*Math.PI*k/64;const v=fc(R*Math.cos(a),R*Math.sin(a));if(prev!==null&&Number.isFinite(v)&&Number.isFinite(prev)&&v*prev<0)ch++;prev=v}if(ch){best=R}}if(best)view={x0:-best*1.6,x1:best*1.6,y0:-best*1.6,y1:best*1.6}}
   if(pt){const px=dcN(pt[0]),py=dcN(pt[1]);P.points.push({x:px,y:py,kind:'pt',label:vecStr(pt)});const sp=Math.max((view.x1-view.x0)/2,Math.abs(px)*1.3+1,Math.abs(py)*1.3+1);view={x0:-sp,x1:sp,y0:-sp,y1:sp};if(r.regular){const s=dcN(r.d1At);const L=sp*0.6/Math.sqrt(1+s*s);P.lines.push({pts:[[px-L,py-L*s],[px+L,py+L*s]],color:'#9ff5e3',dash:[7,5]})}}
-  dcSetPlot(P,view);dcLegend([['#ffd166','courbe F = 0'],['#9ff5e3','tangente']])}else{DCS.plot=null;dcDraw();dcLegend([])}}
+  dcSetPlot(P,view);dcLegend([['#ffd166','courbe F = 0'],['#9ff5e3','tangente']])}else dcImplSurface(F,vars,pt,r)}
+// surface F(x, y, z) = 0 : carte des lignes de niveau z = c, c'est-à-dire les courbes F(x, y, c) = 0
+function dcImplSurface(F,vars,pt,r){const z0=pt?dcN(pt[2]):0;const fc=c=>dcFn2(F,vars,c);
+ const signs=(f,R)=>{let ch=0,prev=null;for(let k=0;k<72;k++){const a=2*Math.PI*k/72;const v=f(R*Math.cos(a),R*Math.sin(a));if(prev!==null&&Number.isFinite(v)&&Number.isFinite(prev)&&v*prev<0)ch++;if(Number.isFinite(v))prev=v}return ch};
+ const hits=(f,R)=>{if(signs(f,R))return true;// courbe entièrement à l'intérieur du disque : changement de signe sur une grille
+  const n=24;let s0=0;for(let i=0;i<=n;i++)for(let j=0;j<=n;j++){const v=f(-R+2*R*i/n,-R+2*R*j/n);if(!Number.isFinite(v)||v===0)continue;const sg=Math.sign(v);if(!s0)s0=sg;else if(sg!==s0)return true}return false};
+ const R0=pt?Math.max(4,Math.abs(dcN(pt[0]))*1.6,Math.abs(dcN(pt[1]))*1.6):4;
+ // pas des niveaux : on retient le plus grand pas (parmi 1, 2, 5, 10, …, et 0.5, 0.25, 0.1) donnant au moins 4 courbes visibles
+ let levels=[];for(const h of [1,2,5,10,25,50,100,0.5,0.25,0.1,0.05]){const L=[];for(let k=-5;k<=5;k++){const c=pt?z0+k*h:k*h;if(hits(fc(c),R0*2))L.push(c)}if(L.length>levels.length)levels=L;if(L.length>=4){levels=L;break}}
+ const P={curves:[],points:[],lines:[],slice:'lignes de niveau de '+r.dep};
+ if(!levels.length){DCS.plot=null;dcDraw();dcLegend([]);return}
+ // échelle commune : plus petit rayon contenant les courbes
+ const RS=[0.25,0.5,1,2,4,8,16,32,64];let sp=0;for(const c of levels){const f=fc(c);const on=RS.map(R=>signs(f,R)>0);const iIn=RS.findIndex((R,i)=>on[i]||hits(f,R));if(iIn<0)continue;
+  if(on[RS.length-1])sp=Math.max(sp,Math.max(4,RS[iIn]*2));// courbe non bornée : fenêtre autour de son point le plus proche
+  else{const iOut=on.lastIndexOf(true);sp=Math.max(sp,(iOut<0?RS[iIn]:RS[Math.min(RS.length-1,iOut+1)])*1.15)}}// courbe bornée : contenue dans le cercle suivant
+ sp=Math.max(sp||R0,pt?R0:0.5);const view={x0:-sp,x1:sp,y0:-sp,y1:sp};
+ const lo=Math.min(...levels),hi=Math.max(...levels);const col=c=>{const t=hi>lo?(c-lo)/(hi-lo):0.5;const q=DC_CMAP(0.12+0.8*t);return'rgb('+q[0]+','+q[1]+','+q[2]+')'};
+ for(const c of levels)P.curves.push({f:fc(c),color:col(c),width:pt&&Math.abs(c-z0)<1e-12?3.4:2.2});
+ if(pt){P.points.push({x:dcN(pt[0]),y:dcN(pt[1]),kind:'pt',label:vecStr(pt)});if(r.regular&&r.zxAt&&r.zyAt){// gradient de z : direction de plus forte croissance de la hauteur
+   const a=dcN(r.zxAt),b=dcN(r.zyAt),n=Math.hypot(a,b);if(n>1e-12){const L=sp*0.25;const px=dcN(pt[0]),py=dcN(pt[1]);P.lines.push({pts:Array.from({length:17},(_,k)=>[px+L*a/n*k/16,py+L*b/n*k/16]),color:'#9ff5e3',arrow:true})}}}
+ dcSetPlot(P,view);const fmt=c=>fmtR(c,4);dcLegend([[col(lo),r.dep+' = '+fmt(lo)],[col(hi),r.dep+' = '+fmt(hi)],...(levels.length>2?[['transparent','pas '+fmt(levels[1]-levels[0])]]:[]),...(pt&&r.regular?[['#9ff5e3','∇'+r.dep+' au point']]:[])])}
 // Formes différentielles
 function dcForm(inp){if(!inp.list)throw Error('Forme attendue sous forme de liste [P, Q] ou [P, Q, R]');const F=inp.list;const vars=dcVars(F,F.length);const r=K.DC.exactForm(F,vars);const B=[];const blk=(title,html)=>B.push('<div class="blk">'+esc(title)+'</div>'+html);
  const dv=vars.map(v=>'d'+v);blk('Forme','<div class="ml">'+mathAlways('ω = '+F.map((c,j)=>'('+str(c)+')·'+dv[j]).join(' + '))+'</div>');
