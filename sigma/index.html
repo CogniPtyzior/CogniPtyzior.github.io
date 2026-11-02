@@ -5315,7 +5315,11 @@ function sophomoreF(c,k){const inner=F('Sum',div(power(mul(neg(n_),fn('ln',k)),j
 function sophomoreNum(c,k){if(k===0)return 0;const L=Math.log(k);let S0=0,stable=0;
  for(let n=1;n<=4000;n++){let inner=0,t=1;for(let j=0;j<n;j++){if(j>0)t*=(-n*L)/j;inner+=t}const term=Math.pow(-c,n-1)*Math.pow(k/n,n)*inner;if(!Number.isFinite(term))return NaN;S0+=term;if(Math.abs(term)<=1e-17*Math.max(1,Math.abs(S0))){if(++stable>=3)return S0}else stable=0}return NaN}
 // intégrale définie ∫ₐᵇ x^(c·x) dx, 0 ≤ a ≤ b (bornes numériques)
-function sophomoreDefinite(f,v,a,b){const c=sophomoreC(f,v);if(!c)return null;if(!isConst(a)||!isConst(b))return null;const na=approx(a),nb=approx(b);if(!(Number.isFinite(na)&&Number.isFinite(nb)&&na>=0&&nb>=0))return null;
+function sophomoreDefinite(f,v,a,b){const c=sophomoreC(f,v);if(!c)return null;if(dep(a,v)||dep(b,v))return null;
+ // bornes symboliques (∫₀ᵏ, k paramètre) : F(b) − F(a), valable pour des bornes positives
+ if(!isConst(a)||!isConst(b)){const okB=z=>!isConst(z)||approx(z)>=0;if(!okB(a)||!okB(b))return null;const Fb=isConst(b)&&iz(b)?Z:sophomoreF(c,b),Fa=isConst(a)&&iz(a)?Z:sophomoreF(c,a);const syms=[...K.symbols(add(a,b))];
+  return{value:iz(Fa)?Fb:sub(Fb,Fa),num:NaN,c,symbolic:true,notes:['Rêve du sophomore généralisé : ∫₀ᵏ x^(c·x) dx = Σ_{n≥1} (−c)^(n−1)·kⁿ/nⁿ · Σ_{j=0}^{n−1} (−n·ln k)^j/j! (c = '+str(c)+')','Valable pour '+syms.join(', ')+' tel(s) que les bornes soient > 0']}}
+ const na=approx(a),nb=approx(b);if(!(Number.isFinite(na)&&Number.isFinite(nb)&&na>=0&&nb>=0))return null;
  const cn=approx(c);const Fb=nb===0?Z:sophomoreF(c,b),Fa=na===0?Z:sophomoreF(c,a);const value=iz(Fa)?Fb:sub(Fb,Fa);
  const num=sophomoreNum(cn,nb)-sophomoreNum(cn,na);
  return{value,num,c,notes:['Rêve du sophomore généralisé : ∫₀ᵏ x^(c·x) dx = Σ_{n≥1} (−c)^(n−1)·kⁿ/nⁿ · Σ_{j=0}^{n−1} (−n·ln k)^j/j! (c = '+str(c)+')'+(na>0?' ; ∫ₐᵇ = F(b) − F(a)':'')]}}
@@ -5547,6 +5551,7 @@ function definite(f,v,a,b,{numericCheck=true,quiet=false,noPiece=false}={}){
  // domaine réel : f doit être réelle sur tout l'intervalle (hors points isolés) ; sinon pas de valeur réelle (√(x² − 1) sur ]−1 ; 1[)
  if(allNum&&!noPiece&&!K.hasI(f)){const bad=realDomainGap(f,v,bnum(a),bnum(b));if(bad)return{text:'Intégrale non définie dans ℝ : l’intégrande n’est pas réel sur une partie de l’intervalle',notes:['f n’est pas réelle pour '+v+' ∈ ]'+(bad[2]?str(bad[2]):K.approxString(bad[0],12))+' ; '+(bad[3]?str(bad[3]):K.approxString(bad[1],12))+'[ (racine paire, logarithme, arcsin, arccos… pris hors de leur domaine) ; l’intégrale réelle n’existe pas. Choisir un intervalle inclus dans le domaine de f.'],status:'domain'}}
  // rêve du sophomore généralisé : ∫ x^(c·x) sur [a ; b] ⊂ [0 ; +∞[ en série exacte (là où aucune primitive élémentaire n'existe)
+ if(!allNum&&!isInf(a)&&!isInf(b)&&K.sophomoreDefinite){let so=null;try{so=K.sophomoreDefinite(f,v,a,b)}catch(_){so=null}if(so&&so.symbolic)return{value:so.value,numeric:null,notes:so.notes,status:'exact'}}
  if(allNum&&!isInf(a)&&!isInf(b)&&K.sophomoreDefinite){let so=null;try{so=K.sophomoreDefinite(f,v,a,b)}catch(_){so=null}
   if(so){const fc=compileNum(f);let q=null;try{q=quadPieces(fc,f,v,[bnum(a),bnum(b)])}catch(_){q=null}const okN=Number.isFinite(so.num)&&(q===null||!Number.isFinite(q)||Math.abs(so.num-q)<=1e-9*Math.max(1,Math.abs(q)));
    const numeric=Number.isFinite(so.num)&&okN?so.num:q;return{value:so.value,numeric,notes:[...so.notes,okN?'Série contrôlée numériquement (quadrature tanh-sinh)':'⚠ Série et quadrature en désaccord : valeur numérique de la quadrature retenue'],status:'exact'}}}
