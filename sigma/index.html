@@ -587,7 +587,9 @@ function approx(x,scope={}){switch(x.t){
   const b=approx(x.a,scope),e=approx(x.b,scope);if(b<0&&x.b.t==='q'&&x.b.q%2n===1n)return (x.b.p%2n===0n?1:-1)*Math.pow(-b,e);
   // base rationnelle proche de 1 et grand exposant : (1 + δ)^e = exp(e·log1p(δ)), δ exact
   if(x.a.t==='q'&&Math.abs(b-1)<1e-4&&Math.abs(e)>1e3){const d=Number(x.a.p-x.a.q)/Number(x.a.q);return Math.exp(e*Math.log1p(d))}return Math.pow(b,e)}
- case'f':{if(x.n==='Sum'&&x.a.length===4&&x.a[1].t==='s'){const lo=approx(x.a[2],scope),hi=approx(x.a[3],scope);if(!Number.isFinite(lo)||!Number.isFinite(hi))return hi===Infinity?NaN:NaN;const a0=Math.round(lo),b0=Math.round(hi);if(Math.abs(lo-a0)>1e-9||Math.abs(hi-b0)>1e-9||b0-a0>1e6)return NaN;let t=0;const sc={...scope};for(let i=a0;i<=b0;i++){sc[x.a[1].n]=i;t+=approx(x.a[0],sc)}return t}
+ case'f':{if(x.n==='Sum'&&x.a.length===4&&x.a[1].t==='s'&&x.a[3].t==='s'&&x.a[3].n==='Infinity'){// série Σ_{k≥a} : sommes partielles jusqu'à stabilisation (termes négligeables trois fois de suite)
+   const lo=approx(x.a[2],scope);const a0=Math.round(lo);if(!Number.isFinite(lo)||Math.abs(lo-a0)>1e-9)return NaN;let t=0,st=0;const sc={...scope};for(let i=a0;i<a0+20000;i++){sc[x.a[1].n]=i;const u=approx(x.a[0],sc);if(!Number.isFinite(u))return NaN;t+=u;if(Math.abs(u)<=1e-17*Math.max(1,Math.abs(t))){if(++st>=3)return t}else st=0}return NaN}
+  if(x.n==='Sum'&&x.a.length===4&&x.a[1].t==='s'){const lo=approx(x.a[2],scope),hi=approx(x.a[3],scope);if(!Number.isFinite(lo)||!Number.isFinite(hi))return hi===Infinity?NaN:NaN;const a0=Math.round(lo),b0=Math.round(hi);if(Math.abs(lo-a0)>1e-9||Math.abs(hi-b0)>1e-9||b0-a0>1e6)return NaN;let t=0;const sc={...scope};for(let i=a0;i<=b0;i++){sc[x.a[1].n]=i;t+=approx(x.a[0],sc)}return t}
   const a=x.a.map(z=>approx(z,scope));let v=a[0];if(K.SPECIAL_NUM&&K.SPECIAL_NUM[x.n])return K.SPECIAL_NUM[x.n](...a);if(TRIG_RED.has(x.n)&&Math.abs(v)>1e8&&Number.isFinite(v))v=bigAngle(x.a[0],v);switch(x.n){
   case'sin':return Math.sin(v);case'cos':return Math.cos(v);case'tan':return Math.tan(v);case'cot':return 1/Math.tan(v);case'sec':return 1/Math.cos(v);case'csc':return 1/Math.sin(v);
   case'asin':return Math.asin(v);case'acos':return Math.acos(v);case'atan':return Math.atan(v);case'acot':return Math.atan(1/v);
@@ -5293,6 +5295,36 @@ Object.assign(K,{consistentValue,impliedByAssumptions,lostConditions,domainOf,ra
 
 }
 {
+// ===================== RÊVE DU SOPHOMORE GÉNÉRALISÉ =====================
+// ∫₀ᵏ x^(c·x) dx = Σ_{n≥1} (−c)^(n−1)·kⁿ/nⁿ · Σ_{j=0}^{n−1} (−n·ln k)^j/j!   (k > 0, c réel ≠ 0)
+// (développement x^(cx) = Σ c^m x^m ln^m x/m! intégré terme à terme ; ∫₀ᵏ x^m ln^m x dx en forme close)
+// k = 1 : Σ (−c)^(n−1)/nⁿ (Bernoulli 1697 : ∫₀¹ x^(−x) dx = Σ n^(−n)).
+'use strict';
+const {Q,Z,ONE,MONE,S,F,mul,add,sub,neg,div,power,fn,dep,str,iz,isConst,approx,polyCoeffs,normal}=K;
+// x^(c·x) avec c constant ; (x^x)^c, 1/x^x, e^(c·x·ln x) se ramènent à cette forme
+function sophomoreC(f,v){const g=K.calcSimplify(f);const x=S(v);
+ const tryP=z=>{if(z.t==='p'&&z.a.t==='s'&&z.a.n===v){const c=normal(div(z.b,x));if(isConst(c)&&!dep(c,v)&&!K.hasI(c)&&!iz(c))return c}if(z.t==='p'&&z.a.t==='p'&&z.a.a.t==='s'&&z.a.a.n===v&&isConst(z.b)){const c=normal(div(mul(z.a.b,z.b),x));if(isConst(c)&&!iz(c)&&!K.hasI(c))return c}
+  if(z.t==='f'&&z.n==='exp'){const c=normal(div(z.a[0],mul(x,fn('ln',x))));if(isConst(c)&&!iz(c)&&!K.hasI(c))return c}return null};
+ let c=tryP(g);if(c)return c;if(g.t==='p'&&isConst(g.b)&&g.b.t==='q'&&g.b.p===-1n&&g.b.q===1n){const c2=tryP(g.a);if(c2)return neg(c2)}return null}
+const n_=S('n'),j_=S('j');
+// F(k) = ∫₀ᵏ x^(c·x) dx comme série Σ inerte (double somme)
+function sophomoreF(c,k){const inner=F('Sum',div(power(mul(neg(n_),fn('ln',k)),j_),fn('factorial',j_)),j_,Z,sub(n_,ONE));
+ if(K.eq(k,ONE))return F('Sum',div(power(neg(c),sub(n_,ONE)),power(n_,n_)),n_,ONE,S('Infinity'));
+ return F('Sum',mul(power(neg(c),sub(n_,ONE)),div(power(k,n_),power(n_,n_)),inner),n_,ONE,S('Infinity'))}
+// valeur numérique de F(k) : série sommée directement (convergence rapide, termes ~ (c·k·ln k)^n/n!), contrôle de stabilité
+function sophomoreNum(c,k){if(k===0)return 0;const L=Math.log(k);let S0=0,stable=0;
+ for(let n=1;n<=4000;n++){let inner=0,t=1;for(let j=0;j<n;j++){if(j>0)t*=(-n*L)/j;inner+=t}const term=Math.pow(-c,n-1)*Math.pow(k/n,n)*inner;if(!Number.isFinite(term))return NaN;S0+=term;if(Math.abs(term)<=1e-17*Math.max(1,Math.abs(S0))){if(++stable>=3)return S0}else stable=0}return NaN}
+// intégrale définie ∫ₐᵇ x^(c·x) dx, 0 ≤ a ≤ b (bornes numériques)
+function sophomoreDefinite(f,v,a,b){const c=sophomoreC(f,v);if(!c)return null;if(!isConst(a)||!isConst(b))return null;const na=approx(a),nb=approx(b);if(!(Number.isFinite(na)&&Number.isFinite(nb)&&na>=0&&nb>=0))return null;
+ const cn=approx(c);const Fb=nb===0?Z:sophomoreF(c,b),Fa=na===0?Z:sophomoreF(c,a);const value=iz(Fa)?Fb:sub(Fb,Fa);
+ const num=sophomoreNum(cn,nb)-sophomoreNum(cn,na);
+ return{value,num,c,notes:['Rêve du sophomore généralisé : ∫₀ᵏ x^(c·x) dx = Σ_{n≥1} (−c)^(n−1)·kⁿ/nⁿ · Σ_{j=0}^{n−1} (−n·ln k)^j/j! (c = '+str(c)+')'+(na>0?' ; ∫ₐᵇ = F(b) − F(a)':'')]}}
+// primitive sous forme de série : F(x) = ∫₀ˣ t^(c·t) dt, valable pour x > 0
+function sophomorePrimitive(f,v){const c=sophomoreC(f,v);if(!c)return null;return{value:sophomoreF(c,S(v)),notes:['Pas de primitive élémentaire : primitive sous forme de série (rêve du sophomore généralisé), F(x) = ∫₀ˣ t^('+str(c)+'·t) dt, valable pour x > 0 ; ajouter une constante C']}}
+Object.assign(K,{sophomoreC,sophomoreF,sophomoreNum,sophomoreDefinite,sophomorePrimitive});
+
+}
+{
 // ===================== INTÉGRALES DÉFINIES ET MULTIPLES =====================
 // Exact : primitive F, puis F(b) − F(a) — limites aux bornes infinies ou singulières, découpage aux
 // singularités intérieures (intégrales impropres, divergence). Bornes symboliques admises (fonctions des
@@ -5514,6 +5546,10 @@ function definite(f,v,a,b,{numericCheck=true,quiet=false,noPiece=false}={}){
  if(allNum){const na=bnum(a),nb=bnum(b);if(na>nb){const r=definite(f,v,b,a,{numericCheck,quiet});if(r.value)r.value=neg(r.value);if(typeof r.numeric==='number')r.numeric=-r.numeric;r.notes=['Bornes inversées : ∫ₐᵇ = −∫ᵦᵃ',...r.notes];return r}if(na===nb)return{value:Z,numeric:0,notes:['Bornes égales'],status:'exact'}}
  // domaine réel : f doit être réelle sur tout l'intervalle (hors points isolés) ; sinon pas de valeur réelle (√(x² − 1) sur ]−1 ; 1[)
  if(allNum&&!noPiece&&!K.hasI(f)){const bad=realDomainGap(f,v,bnum(a),bnum(b));if(bad)return{text:'Intégrale non définie dans ℝ : l’intégrande n’est pas réel sur une partie de l’intervalle',notes:['f n’est pas réelle pour '+v+' ∈ ]'+(bad[2]?str(bad[2]):K.approxString(bad[0],12))+' ; '+(bad[3]?str(bad[3]):K.approxString(bad[1],12))+'[ (racine paire, logarithme, arcsin, arccos… pris hors de leur domaine) ; l’intégrale réelle n’existe pas. Choisir un intervalle inclus dans le domaine de f.'],status:'domain'}}
+ // rêve du sophomore généralisé : ∫ x^(c·x) sur [a ; b] ⊂ [0 ; +∞[ en série exacte (là où aucune primitive élémentaire n'existe)
+ if(allNum&&!isInf(a)&&!isInf(b)&&K.sophomoreDefinite){let so=null;try{so=K.sophomoreDefinite(f,v,a,b)}catch(_){so=null}
+  if(so){const fc=compileNum(f);let q=null;try{q=quadPieces(fc,f,v,[bnum(a),bnum(b)])}catch(_){q=null}const okN=Number.isFinite(so.num)&&(q===null||!Number.isFinite(q)||Math.abs(so.num-q)<=1e-9*Math.max(1,Math.abs(q)));
+   const numeric=Number.isFinite(so.num)&&okN?so.num:q;return{value:so.value,numeric,notes:[...so.notes,okN?'Série contrôlée numériquement (quadrature tanh-sinh)':'⚠ Série et quadrature en désaccord : valeur numérique de la quadrature retenue'],status:'exact'}}}
  if(allNum&&!noPiece){const st=definiteSteps(f,v,a,b,{numericCheck});if(st&&st.value){if(numericCheck&&!/paliers, primitive commune/.test(st.notes[0]||'')){const fc=compileNum(f);const nv=quadPieces(fc,f,v,[bnum(a),bnum(b)]);st.numeric=nv;const ev=approx(st.value);if(Number.isFinite(nv)&&Math.abs(ev-nv)<=1e-7*Math.max(1,Math.abs(nv)))st.notes.push('Contrôlé numériquement (tanh-sinh, découpage aux sauts)');else st.notes.push('⚠ Contrôle numérique non concluant ('+nv+')')}return st}}
  if(allNum&&!noPiece){const pw=definitePiecewise(f,v,a,b,{numericCheck});if(pw&&pw.value){if(numericCheck){const fc=compileNum(f);const pts=[a,...singularPoints(f,v).filter(s=>{const x=approx(s);return x>bnum(a)&&x<bnum(b)}).sort((p,q)=>approx(p)-approx(q)),b].map(x=>bnum(x));const nv=quadPieces(fc,f,v,pts);pw.numeric=nv;const ev=approx(pw.value);if(Number.isFinite(nv)&&Math.abs(ev-nv)<=1e-7*Math.max(1,Math.abs(nv))){pw.notes.push('Contrôlé numériquement (tanh-sinh)');return pw}}else return pw}else if(pw&&pw.status==='divergent')return pw}
  // paramètres hors de |·| : découpage aux zéros des arguments de |·| (qui ne dépendent que de la variable)
@@ -6969,7 +7005,7 @@ def('diff|derivative','analyse','diff(f, x, n)','Dérivée de f par rapport à x
     cur=varName(x);prev=r;r=K.derivative(r,cur)}return tidy(r)};return mapList(a[0],go)},{expr:true});
 const numOfDef=r=>{if(r.numericC&&Number.isFinite(r.numericC.re)&&Number.isFinite(r.numericC.im)&&r.numericC.im!==0){const z=K.add(fromNum(r.numericC.re),K.mul(fromNum(r.numericC.im),K.I));K.NUMVAL.add(z);return z}return typeof r.numeric==='number'&&Number.isFinite(r.numeric)?fromNum(r.numeric):null};
 def('integrate|int','analyse','integrate(f, x)  ·  integrate(f, (x, a, b))','Primitive (sans constante) ou intégrale définie ; plusieurs tuples = intégrale multiple, le premier tuple est l’intégrale intérieure.',[['f','intégrande'],['x','variable (primitive)'],['(x, a, b)','variable et bornes (nombres, inf, ou expressions)']],['integrate(x*exp(x), x)','integrate(1/(x^3+1), x)','integrate(exp(-x^2), (x, -oo, oo))','integrate(x*y, (y, 0, x), (x, 0, 1))'],(a,ctx)=>{const f=E(a[0]);const tups=a.slice(1).filter(x=>x&&x.t==='tuple');
-  if(!tups.length){if(a.length===4){const r=K.definite(f,varName(a[1]),defB(E(a[2])),defB(E(a[3])));if(r.value)return r.value;if(r.status==='domain'||r.status==='divergent')err(r.text);const nv=numOfDef(r);if(nv){note(ctx,'Valeur numérique (pas de primitive élémentaire)');return nv}err('Intégrale non calculable')}const v=autoVar(f,a[1]);note(ctx,'Primitive : ajouter une constante C');const F=K.integrate(f,v);if((K.INT_JOINS||[]).length)note(ctx,'Constantes raccordées en '+v+' = '+K.INT_JOINS.map(str).join(', ')+(K.INT_JOINS_PARTIAL?' : limites égales (formule non définie au point)':' : primitive continue et définie partout'));return F}
+  if(!tups.length){if(a.length===4){const r=K.definite(f,varName(a[1]),defB(E(a[2])),defB(E(a[3])));if(r.value)return r.value;if(r.status==='domain'||r.status==='divergent')err(r.text);const nv=numOfDef(r);if(nv){note(ctx,'Valeur numérique (pas de primitive élémentaire)');return nv}err('Intégrale non calculable')}const v=autoVar(f,a[1]);let F;try{F=K.integrate(f,v)}catch(er){const sp=K.sophomorePrimitive?K.sophomorePrimitive(f,v):null;if(!sp)throw er;sp.notes.forEach(n=>note(ctx,n));return sp.value}note(ctx,'Primitive : ajouter une constante C');if((K.INT_JOINS||[]).length)note(ctx,'Constantes raccordées en '+v+' = '+K.INT_JOINS.map(str).join(', ')+(K.INT_JOINS_PARTIAL?' : limites égales (formule non définie au point)':' : primitive continue et définie partout'));return F}
   if(tups.length===1){const b=bounds(tups[0]);const r=K.definite(f,b.v,defB(b.a),defB(b.b));(r.notes||[]).forEach(n=>note(ctx,n));if(r.status==='divergent')err('Intégrale divergente');if(r.status==='domain')err(r.text);if(r.value)return r.value;const nv=numOfDef(r);if(nv){note(ctx,'Valeur numérique (pas de primitive élémentaire)');return nv}err('Intégrale non calculable')}
   const specs=tups.map(t=>{const b=bounds(t);return{v:b.v,a:pointStr(b.a),b:pointStr(b.b)}});const r=K.multiple(f,specs);(r.notes||[]).forEach(n=>note(ctx,n));if(r.value)return r.value;if(typeof r.numeric==='number')return fromNum(r.numeric);err('Intégrale non calculable')},{expr:true});
 def('nintegrate|nint','analyse','nintegrate(f, (x, a, b))','Intégrale définie numérique (tanh-sinh, bornes infinies acceptées).',[['f','intégrande'],['(x, a, b)','variable et bornes numériques']],['nintegrate(sin(x)/x, (x, 0, 1))','nintegrate(exp(-x^2), (x, 0, oo))'],a=>{const b=bounds(a[1]);const f=K.compileNum(E(a[0]));const va=isInf(b.a)?(b.a.t==='s'?Infinity:-Infinity):num(b.a),vb=isInf(b.b)?(b.b.t==='s'?Infinity:-Infinity):num(b.b);const r=K.tanhSinh(x=>f({[b.v]:x}),va,vb);const v=typeof r==='number'?r:r.value;return fromNum(v)},{expr:true});
@@ -7569,7 +7605,7 @@ function runCas(operation){const target='casOut';try{
   case 'factor':{const f=K.factorSym(source);return exactOut(target,f.value,f.symbolic&&(f.notes.length||f.conds.length)?symNotes(f,'Factorisation à exposant symbolique, contrôlée numériquement.'):'Factorisation complète sur ℚ (Yun + Zassenhaus/Hensel ; multivarié par homogénéisation/Kronecker). Facteurs irréductibles sur ℚ.','FACTORISATION EXACTE',f.symbolic?null:srcText)}
   case 'apart':return exactOut(target,K.apart(source,variable),'Décomposition en éléments simples sur ℚ.','ÉLÉMENTS SIMPLES',srcText);
   case 'derive':return exactOut(target,K.tidy(K.derivative(source,variable)),'Dérivée symbolique (hors points de non-dérivabilité).');
-  case 'integrate':{const F=K.integrate(source,variable);const j=(K.INT_JOINS||[]);return exactOut(target,F,'Primitive vérifiée par dérivation ; ajouter une constante C. ln|u| : valable sur chaque intervalle du domaine.'+(j.length?' Constantes raccordées en '+variable+' = '+j.map(K.str).join(', ')+(K.INT_JOINS_PARTIAL?' : limites à gauche et à droite égales (formule non définie au point même).':' : primitive continue et définie sur tout le domaine de f (termes en sign, sign(0) = 0).'):''),'PRIMITIVE EXACTE')}
+  case 'integrate':{let F0=null,er0=null;try{F0=K.integrate(source,variable)}catch(e){er0=e}if(er0){const sp=K.sophomorePrimitive?K.sophomorePrimitive(source,variable):null;if(!sp)throw er0;return exactOut(target,sp.value,sp.notes.join(' · '),'PRIMITIVE (SÉRIE)')}const F=F0;const j=(K.INT_JOINS||[]);return exactOut(target,F,'Primitive vérifiée par dérivation ; ajouter une constante C. ln|u| : valable sur chaque intervalle du domaine.'+(j.length?' Constantes raccordées en '+variable+' = '+j.map(K.str).join(', ')+(K.INT_JOINS_PARTIAL?' : limites à gauche et à droite égales (formule non définie au point même).':' : primitive continue et définie sur tout le domaine de f (termes en sign, sign(0) = 0).'):''),'PRIMITIVE EXACTE')}
   case 'nthderive':case 'nthintegrate':{const r=K.nthOrder(source,variable,$('casNth').value,operation==='nthintegrate');return setResult(target,r)}
   case 'taylor':{const r=K.taylor(source,variable,parse($('casPoint').value||'0'),Number($('casOrder').value));return exactOut(target,r,(r.puiseux?'Développement de Puiseux/Laurent':'Polynôme de Taylor')+' à l’ordre '+$('casOrder').value+' ; reste omis.','DÉVELOPPEMENT LIMITÉ')}
  }}catch(e){err(target,e)}}
@@ -7656,7 +7692,7 @@ function runIntegral(numericOnly=false){const target='intOut';try{
  if(r.status==='domain')return setResult(target,{text:r.text,notes,label:'INTÉGRALE NON DÉFINIE DANS ℝ'});
  if((numericOnly||r.numericOnly)&&r.numericC&&r.numericC.im!==0){const c=r.numericC,A=v=>K.approxString(v,12);return setResult(target,{text:'≈ '+A(c.re)+(c.im<0?' − ':' + ')+A(Math.abs(c.im))+'·i',numericOnly:true,notes,label:'VALEUR NUMÉRIQUE (COMPLEXE)'})}
  if(numericOnly||r.numericOnly){if(typeof r.numeric!=='number'||!Number.isFinite(r.numeric))throw Error('Valeur numérique indisponible (bornes ou paramètres symboliques)');return setResult(target,{text:'≈ '+K.approxString(r.numeric,12),numericOnly:true,notes,label:'VALEUR NUMÉRIQUE'})}
- if(r.value)return setResult(target,{value:r.value,notes,label:dim===1?'INTÉGRALE EXACTE':dim===2?'INTÉGRALE DOUBLE EXACTE':'INTÉGRALE TRIPLE EXACTE'});
+ if(r.value){const alt=typeof r.numeric==='number'&&Number.isFinite(r.numeric)&&!Number.isFinite(K.approx(r.value))?'≈ '+K.approxString(r.numeric,12):undefined;return setResult(target,{value:r.value,alternate:alt,notes,label:dim===1?'INTÉGRALE EXACTE':dim===2?'INTÉGRALE DOUBLE EXACTE':'INTÉGRALE TRIPLE EXACTE'})}
  setResult(target,{text:r.text,notes,label:'FORME FORMELLE'})}catch(e){err(target,e)}}
 $('intDim').onchange=()=>{intLayout();persistSoon()};$('intCoord').onchange=()=>{intFill($('intCoord').value);intLayout()};
 $('intGo').onclick=()=>runIntegral(false);$('intNum').onclick=()=>runIntegral(true);
