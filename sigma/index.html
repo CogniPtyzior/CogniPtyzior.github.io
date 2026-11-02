@@ -92,18 +92,34 @@ const S=n=>({t:'s',n});const F=(n,...a)=>({t:'f',n,a});const P=(a,b)=>({t:'p',a,
 const PI=S('pi'),E_=S('e'),I=S('i');
 // ---------- registre d'hypothèses (déclarées par l'utilisateur) ----------
 const ASSUME={pos:new Set(),nonneg:new Set(),neg:new Set(),nonpos:new Set(),nonzero:new Set(),integer:new Set(),text:''};
-function setAssumptions(text){for(const k of ['pos','nonneg','neg','nonpos','nonzero','integer'])ASSUME[k].clear();ASSUME.text=String(text||'').trim();const unknown=[];const applied=[];
- for(let tok of ASSUME.text.split(/[;,\n]+/).map(t=>t.trim()).filter(Boolean)){const t=tok.replace(/\s+/g,'').replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/≠/g,'!=').replace(/∈/g,'in');
-  let m=t.match(/^([A-Za-z]\w*)(>=|<=|>|<|!=|=)(-?\d+(?:\.\d+)?)$/);if(!m){const r=t.match(/^(-?\d+(?:\.\d+)?)(<=|>=|<|>)([A-Za-z]\w*)$/);if(r)m=[0,r[3],{'<':'>','>':'<','<=':'>=','>=':'<='}[r[2]],r[1]]}
-  if(m){const [,v,op,c]=m;const cv=Number(c);
-   if(op==='>'&&cv>=0){ASSUME.pos.add(v);ASSUME.nonzero.add(v)}else if(op==='>='&&cv>0){ASSUME.pos.add(v);ASSUME.nonzero.add(v)}else if(op==='>='&&cv===0)ASSUME.nonneg.add(v);
-   else if(op==='<'&&cv<=0){ASSUME.neg.add(v);ASSUME.nonzero.add(v)}else if(op==='<='&&cv<0){ASSUME.neg.add(v);ASSUME.nonzero.add(v)}else if(op==='<='&&cv===0)ASSUME.nonpos.add(v);
-   else if(op==='!='&&cv===0)ASSUME.nonzero.add(v);else{unknown.push(tok);continue}applied.push(tok);continue}
-  m=t.match(/^([A-Za-z]\w*?)(?:in)(ℤ|Z|ℕ|N)$/)||t.match(/^([A-Za-z]\w*?)(?:est)?(entier|naturel|integer)$/i);
-  if(m){ASSUME.integer.add(m[1]);if(/ℕ|^N$|naturel/i.test(m[2]))ASSUME.nonneg.add(m[1]);applied.push(tok);continue}
-  unknown.push(tok)}
+function setAssumptions(text){for(const k of ['pos','nonneg','neg','nonpos','nonzero','integer'])ASSUME[k].clear();ASSUME.bounds=new Map();ASSUME.text=String(text||'').trim();const unknown=[];const applied=[];
+ // intervalles « y ∈ ]0 ; π/2[ » protégés du découpage sur ; et ,
+ const src=ASSUME.text.replace(/(∈|\bin\b)\s*([\[\]])([^\[\]]*?)[;,]([^\[\]]*?)([\[\]])/g,(m,a,b,c,d,e)=>a+b+c+'§'+d+e);
+ const cst=t=>{try{const e=K.parse(t.replace(/§/g,','));if(!isConst(e)||hasI(e))return null;const v=approx(e);return Number.isFinite(v)?{e,v}:null}catch(_){return null}};
+ const bound=(v,side,c,strict)=>{const b=ASSUME.bounds.get(v)||{};if(side==='lo'){if(b.lo===undefined||c.v>b.lo||(c.v===b.lo&&strict)){b.lo=c.v;b.loE=c.e;b.loS=strict}}else{if(b.hi===undefined||c.v<b.hi||(c.v===b.hi&&strict)){b.hi=c.v;b.hiE=c.e;b.hiS=strict}}ASSUME.bounds.set(v,b)};
+ const rel=(v,op,c)=>{if(op==='>'||op==='>=')bound(v,'lo',c,op==='>');else if(op==='<'||op==='<=')bound(v,'hi',c,op==='<');else if(op==='!='&&c.v===0)ASSUME.nonzero.add(v);else return false;return true};
+ const flip={'<':'>','>':'<','<=':'>=','>=':'<='};
+ for(let tok of src.split(/[;,\n]+/).map(t=>t.trim()).filter(Boolean)){const t=tok.replace(/\s+/g,'').replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/≠/g,'!=').replace(/∈/g,'in').replace(/π/g,'pi');const shown=tok.replace(/\s*§\s*/g,' ; ');
+  let m=t.match(/^([A-Za-z]\w*?)(?:in)(ℤ|Z|ℕ|N)$/)||t.match(/^([A-Za-z]\w*?)(?:est)?(entier|naturel|integer)$/i);
+  if(m){ASSUME.integer.add(m[1]);if(/ℕ|^N$|naturel/i.test(m[2]))ASSUME.nonneg.add(m[1]);applied.push(shown);continue}
+  m=t.match(/^([A-Za-z]\w*?)in([\[\]])(.+)§(.+)([\[\]])$/);
+  if(m){const a=cst(m[3]),b=cst(m[4]);if(a&&b&&a.v<=b.v){bound(m[1],'lo',a,m[2]===']');bound(m[1],'hi',b,m[5]==='[');applied.push(shown);continue}unknown.push(shown);continue}
+  m=t.match(/^(.+?)(<=|>=|<|>)([A-Za-z]\w*)(<=|>=|<|>)(.+)$/);// chaîne a < y < b
+  if(m&&!/[<>]/.test(m[1])&&!/[<>]/.test(m[5])){const a=cst(m[1]),b=cst(m[5]);if(a&&b&&rel(m[3],flip[m[2]],a)&&rel(m[3],m[4],b)){applied.push(shown);continue}unknown.push(shown);continue}
+  m=t.match(/^([A-Za-z]\w*)(>=|<=|>|<|!=)(.+)$/);if(!m){const r=t.match(/^(.+?)(<=|>=|<|>)([A-Za-z]\w*)$/);if(r)m=[0,r[3],flip[r[2]],r[1]]}
+  if(m){const c=cst(m[3]);if(c&&!(K.parse&&[...symbols(c.e)].length)&&rel(m[1],m[2],c)){applied.push(shown);continue}}
+  unknown.push(shown)}
+ // signes déduits des bornes
+ for(const [v,b] of ASSUME.bounds){if(b.lo!==undefined&&(b.lo>0||(b.lo===0&&b.loS))){ASSUME.pos.add(v);ASSUME.nonzero.add(v)}else if(b.lo===0)ASSUME.nonneg.add(v);
+  if(b.hi!==undefined&&(b.hi<0||(b.hi===0&&b.hiS))){ASSUME.neg.add(v);ASSUME.nonzero.add(v)}else if(b.hi===0)ASSUME.nonpos.add(v)}
  return{applied,unknown}}
-const hasAssumptions=()=>['pos','nonneg','neg','nonpos','nonzero','integer'].some(k=>ASSUME[k].size>0);
+// valeur numérique compatible avec les hypothèses de la variable v (bornes, signe, entier) ; tolérance relative 1e-12 sur les bornes larges
+function assumeOK(v,x){if(!Number.isFinite(x))return true;const tol=0;const b=ASSUME.bounds&&ASSUME.bounds.get(v);const bt=c=>1e-12*Math.max(Math.abs(c),Math.abs(x));
+ if(ASSUME.pos.has(v)&&!(x>tol))return false;if(ASSUME.neg.has(v)&&!(x<-tol))return false;if(ASSUME.nonneg.has(v)&&x<-tol)return false;if(ASSUME.nonpos.has(v)&&x>tol)return false;if(ASSUME.nonzero.has(v)&&Math.abs(x)<=tol)return false;
+ if(ASSUME.integer.has(v)&&Math.abs(x-Math.round(x))>1e-9)return false;
+ if(b){if(b.lo!==undefined&&(b.loS?!(x>b.lo+bt(b.lo)):x<b.lo-bt(b.lo)))return false;if(b.hi!==undefined&&(b.hiS?!(x<b.hi-bt(b.hi)):x>b.hi+bt(b.hi)))return false}return true}
+const assumedVars=()=>new Set([...['pos','nonneg','neg','nonpos','nonzero','integer'].flatMap(k=>[...ASSUME[k]]),...(ASSUME.bounds?ASSUME.bounds.keys():[])]);
+const hasAssumptions=()=>['pos','nonneg','neg','nonpos','nonzero','integer'].some(k=>ASSUME[k].size>0)||!!(ASSUME.bounds&&ASSUME.bounds.size);
 // signe exact déduit des hypothèses : 1, −1, 0 ou null (inconnu)
 function signOfExpr(z){switch(z.t){
  case'q':return z.p>0n?1:z.p<0n?-1:0;
@@ -362,6 +378,7 @@ function fn(n,...a){
   if(x.t==='q'&&x.p===1n){const pp=perfectPower(x.q);if((pp&&pp[0]===10n))return Q(-pp[1]);if(x.q===10n)return MONE}
   return F('log',x)}
  case 'abs':{if(x.t==='q')return Q(babs(x.p),x.q);
+  {const pe=polarExp(x);if(pe&&!hasI(pe.rho))return pe.rho}
   if(cplxish(x)&&!isNumericAlg(x)){// variable complexe : seules les règles valables dans ℂ
    if(x.t==='f'&&x.n==='abs')return x;if(x.t==='m')return mul(...x.a.map(z=>fn('abs',z)));if(x.t==='p'&&x.b.t==='q'&&qi(x.b))return power(fn('abs',x.a),x.b);if(x.t==='f'&&x.n==='conj')return fn('abs',x.a[0]);if(x.t==='s'&&x.n==='i')return ONE;
    if(x.t!=='a'&&leadingNegative(x))return F('abs',neg(x));return F('abs',x)}if(x.t==='f'&&x.n==='sign')return ONE;// |sign(u)| = 1 (u ≠ 0, cas générique)
@@ -409,7 +426,7 @@ function fn(n,...a){
    const corr=[];if(fl>=0n){for(let j=0n;j<fl;j++)corr.push(power(qadd(r,Q(j)),MONE));return add(base,...corr)}
    for(let j=fl;j<0n;j++)corr.push(neg(power(qadd(r,Q(j)),MONE)));return add(base,...corr)}
   return F(n,x)}
- case 're':case 'im':case 'conj':case 'arg':{if(n==='arg'&&iz(x))throw Error('arg(0) n’est pas défini');const c=isNumericAlg(x)?cpx(x):null;if(c){if(n==='re')return c.re;if(n==='im')return c.im;if(n==='conj')return add(c.re,neg(mul(I,c.im)));
+ case 're':case 'im':case 'conj':case 'arg':{if(n==='arg'&&iz(x))throw Error('arg(0) n’est pas défini');if(n==='arg'){const pe=polarExp(x);if(pe){const R=reduceAngle(pe.theta);if(R)return R}}const c=isNumericAlg(x)?cpx(x):null;if(c){if(n==='re')return c.re;if(n==='im')return c.im;if(n==='conj')return add(c.re,neg(mul(I,c.im)));
    const re=approx(c.re),im=approx(c.im);if(re>0)return fn('atan',div(c.im,c.re));if(im===0&&re<0)return PI;if(re===0)return im>0?div(PI,TWO):neg(div(PI,TWO));if(re<0)return im>0?add(fn('atan',div(c.im,c.re)),PI):sub(fn('atan',div(c.im,c.re)),PI);return F('arg',x)}
   if(n==='arg'&&isConst(x)){const z=complexApprox(x);if(Number.isFinite(z.re)&&Number.isFinite(z.im)){if(Math.abs(z.re)<1e-15&&z.im!==0){const b=x.t==='m'?mul(...x.a.filter(w=>!(w.t==='s'&&w.n==='i'))):null;if(b&&!hasI(b))return z.im>0?div(PI,TWO):neg(div(PI,TWO))}if(Math.abs(z.im)<1e-15&&!hasI(x))return z.re<0?PI:Z}}
   // variables complexes par convention (z, w) : conj, re, im restent symboliques
@@ -557,15 +574,19 @@ function airy(name,t){const c1=0.355028053887817239,c2=0.258819403792806798;let 
   tf*=t*t*t/((n+2)*(n+3));tg*=t*t*t/((n+3)*(n+4));if(Math.abs(tf)<1e-18*Math.abs(f)&&Math.abs(tg)<1e-18*Math.max(1e-300,Math.abs(g)))break}
  if(t===0){fp=0;gp=1}
  switch(name){case'airyai':return c1*f-c2*g;case'airybi':return Math.sqrt(3)*(c1*f+c2*g);case'airyaip':return c1*fp-c2*gp;case'airybip':return Math.sqrt(3)*(c1*fp+c2*gp)}}
+// argument trigonométrique gigantesque (|θ| > 10^8) constant : réduction exacte modulo 2π (π en BigInt à la précision voulue)
+const TRIG_RED=new Set(['sin','cos','tan','cot','sec','csc']);
+function cPiFloat(T){let r=Q(0),c=Q(0);for(const t of (T.t==='a'?T.a:[T])){if(t.t==='q'){c=qadd(c,t);continue}const k=div(t,PI);if(k.t==='q'){r=qadd(r,k);continue}return null}const dig=String(babs(r.p/r.q)).length+String(babs(c.p/c.q)).length+25;const sc=10n**BigInt(dig);const v=c.p*sc/c.q+r.p*piDigits(dig)/r.q;return Number(v*10n**18n/sc)/1e18}
+function bigAngle(arg,v){try{if(!isConst(arg)||hasI(arg))return v;const R=reduceAngle(arg);if(!R)return v;let r=cPiFloat(R);if(r===null)r=approx(R);if(Math.abs(r)>7)r=hpNumber(R.t==='a'?R:add(R,Z),r);return Math.abs(r)<=7?r:v}catch(_){return v}}
 function approx(x,scope={}){switch(x.t){
  case'q':return rn(x);
  case's':return Object.hasOwn(scope,x.n)?scope[x.n]:x.n==='pi'?Math.PI:x.n==='e'?Math.E:x.n==='EulerGamma'?0.5772156649015329:x.n==='Infinity'?Infinity:NaN;
- case'a':return x.a.reduce((v,z)=>v+approx(z,scope),0);
+ case'a':{let v=0,mx=0;for(const z of x.a){const t=approx(z,scope);v+=t;const at=Math.abs(t);if(at>mx)mx=at}if(mx>1e4&&Math.abs(v)<1e-4*mx&&Number.isFinite(v)&&isConst(x))v=hpNumber(x,v);return v}// compensation massive (ex. 10^20 − k·π) : recalcul en haute précision
  case'm':return x.a.reduce((v,z)=>v*approx(z,scope),1);
  case'p':{if(x.a.t==='f'&&x.a.n==='gamma'&&x.b.t==='q'&&x.b.p<0n){const z=approx(x.a.a[0],scope);if(z<=0&&Number.isInteger(z))return 0}
   const b=approx(x.a,scope),e=approx(x.b,scope);if(b<0&&x.b.t==='q'&&x.b.q%2n===1n)return (x.b.p%2n===0n?1:-1)*Math.pow(-b,e);return Math.pow(b,e)}
  case'f':{if(x.n==='Sum'&&x.a.length===4&&x.a[1].t==='s'){const lo=approx(x.a[2],scope),hi=approx(x.a[3],scope);if(!Number.isFinite(lo)||!Number.isFinite(hi))return hi===Infinity?NaN:NaN;const a0=Math.round(lo),b0=Math.round(hi);if(Math.abs(lo-a0)>1e-9||Math.abs(hi-b0)>1e-9||b0-a0>1e6)return NaN;let t=0;const sc={...scope};for(let i=a0;i<=b0;i++){sc[x.a[1].n]=i;t+=approx(x.a[0],sc)}return t}
-  const a=x.a.map(z=>approx(z,scope)),v=a[0];if(K.SPECIAL_NUM&&K.SPECIAL_NUM[x.n])return K.SPECIAL_NUM[x.n](...a);switch(x.n){
+  const a=x.a.map(z=>approx(z,scope));let v=a[0];if(K.SPECIAL_NUM&&K.SPECIAL_NUM[x.n])return K.SPECIAL_NUM[x.n](...a);if(TRIG_RED.has(x.n)&&Math.abs(v)>1e8&&Number.isFinite(v))v=bigAngle(x.a[0],v);switch(x.n){
   case'sin':return Math.sin(v);case'cos':return Math.cos(v);case'tan':return Math.tan(v);case'cot':return 1/Math.tan(v);case'sec':return 1/Math.cos(v);case'csc':return 1/Math.sin(v);
   case'asin':return Math.asin(v);case'acos':return Math.acos(v);case'atan':return Math.atan(v);case'acot':return Math.atan(1/v);
   case'sinh':return Math.sinh(v);case'cosh':return Math.cosh(v);case'tanh':return Math.tanh(v);case'asinh':return Math.asinh(v);case'acosh':return Math.acosh(v);case'atanh':return Math.atanh(v);
@@ -585,7 +606,7 @@ function complexApprox(x,scope={}){
  function E(z){switch(z.t){case'q':return Zc(rn(z));case's':return z.n==='i'?Zc(0,1):Zc(approx(z,scope));case'a':return z.a.reduce((a,b)=>am(a,E(b)),Zc(0));case'm':return z.a.reduce((a,b)=>mu(a,E(b)),Zc(1));
   case'p':return pw(E(z.a),E(z.b));
   case'f':{if(!hasI(z)&&z.a.every(w=>!hasI(w))){const v=approx(z,scope);if(Number.isFinite(v))return Zc(v)}const a=E(z.a[0]);switch(z.n){
-   case'exp':return ex(a);case'ln':return lg(a);case'sin':return Zc(Math.sin(a.re)*Math.cosh(a.im),Math.cos(a.re)*Math.sinh(a.im));case'cos':return Zc(Math.cos(a.re)*Math.cosh(a.im),-Math.sin(a.re)*Math.sinh(a.im));
+   case'exp':{if(Math.abs(a.im)>1e8&&isConst(z)){const pe=polarExp(z);if(pe){const R=reduceAngle(pe.theta);if(R){let t=cPiFloat(R);if(t===null)t=approx(R);const r=Math.exp(a.re);if(Math.abs(t)<=7)return Zc(r*Math.cos(t),r*Math.sin(t))}}}return ex(a)}case'ln':return lg(a);case'sin':return Zc(Math.sin(a.re)*Math.cosh(a.im),Math.cos(a.re)*Math.sinh(a.im));case'cos':return Zc(Math.cos(a.re)*Math.cosh(a.im),-Math.sin(a.re)*Math.sinh(a.im));
    case'abs':return Zc(Math.hypot(a.re,a.im));case'conj':return Zc(a.re,-a.im);case're':return Zc(a.re);case'im':return Zc(a.im);case'arg':return Zc(Math.atan2(a.im,a.re));
    case'sqrt':return pw(a,Zc(.5));case'tan':{const s=E(F('sin',z.a[0])),c=E(F('cos',z.a[0]));return dv(s,c)}
    case'acos':case'asin':case'atan':{const v=approx(z,scope);if(Number.isFinite(v))return Zc(v);return Zc(NaN,NaN)}}
@@ -596,6 +617,19 @@ function approxString(x,d=12){const n=typeof x==='number'?x:approx(x);if(Number.
 // rationnels, π, e, sommes, produits, puissances entières, racines carrées et cubiques ; null sinon
 const HP_DIG=60,HP_S=10n**60n;
 const HP_PI=314159265358979323846264338327950288419716939937510582097494459n,HP_E=271828182845904523536028747135266249775724709369995957496696762n;// 10^62
+// ---------- forme polaire exacte ρ·exp(i·Θ) d'une constante (produits de réels, exp(a + i·b), e^r) ----------
+function piDigits(D){const S=10n**BigInt(D+10);const at=x=>{let t=S/x,s=t,k=1n,x2=x*x,sg=-1n;while(t!==0n){t=t/x2;const term=t/(2n*k+1n);s+=sg*term;sg=-sg;k++}return s};return (16n*at(5n)-4n*at(239n))/10n**10n}// ⌊π·10^D⌋ (Machin)
+function polarExp(x){if(!isConst(x)||!hasFn(x,'exp'))return null;let rho=[],th=[];
+ for(const f of (x.t==='m'?x.a:[x])){if(f.t==='f'&&f.n==='exp'){const a=f.a[0];const ts=a.t==='a'?a.a:[a];const re=[],im=[];for(const t of ts){if(!hasI(t)){re.push(t);continue}const b=div(t,I);if(hasI(b))return null;im.push(b)}rho.push(fn('exp',add(...re)));th.push(add(...im));continue}
+  if(hasI(f))return null;const v=approx(f);if(!Number.isFinite(v)||v===0){if(f.t==='p'&&f.a.t==='s'&&f.a.n==='e'&&!hasI(f.b)){rho.push(f);continue}return null}if(v>0)rho.push(f);else{rho.push(neg(f));th.push(PI)}}
+ return {rho:mul(...rho),theta:add(...th)}}
+// réduction exacte d'un angle réel dans ]−π ; π] : Θ = c + r·π (c, r rationnels) avec π à précision suffisante ; sinon décimal 60 chiffres si |Θ| < 1e40
+function reduceAngle(T){let r=Q(0),c=Q(0),rest=[];for(const t of (T.t==='a'?T.a:[T])){if(t.t==='q'){c=qadd(c,t);continue}const k=div(t,PI);if(k.t==='q'){r=qadd(r,k);continue}rest.push(t)}
+ let k;if(!rest.length){const dig=String(babs(c.p/c.q)).length+30;const pD=piDigits(dig);const sc=10n**BigInt(dig);// Θ/(2π) = c/(2π) + r/2
+  const num=c.p*sc*sc,den=c.q*2n*pD;let v=num/den+ (r.p*sc)/(2n*r.q);// ×sc
+  const fl=v>=0n?v/sc:-((-v+sc-1n)/sc);const frac=v-fl*sc;k=2n*frac>sc?fl+1n:fl}
+ else{const v=approx(T);if(!Number.isFinite(v)||Math.abs(v)>1e40)return null;let hv=null;try{hv=hpEval(T)}catch(_){}const tw=2n*(HP_PI/100n);if(hv!==null){let q=hv/tw;let m=hv-q*tw;if(m<0n){m+=tw;q-=1n}k=2n*m>tw?q+1n:q}else k=BigInt(Math.round(v/(2*Math.PI)))}
+ let R=k===0n?T:add(T,mul(Q(-2n*k),PI));const a=approx(R);if(Number.isFinite(a)&&a<=-Math.PI+1e-12&&Math.abs(a+Math.PI)<1e-12&&eq(add(R,PI),Z))R=PI;return R}
 function hpEval(x){switch(x.t){
  case'q':{const n=x.p*HP_S,d=x.q;const r=n/d,m=n%d;return 2n*babs(m)>=d?r+(n<0n?-1n:1n):r}
  case's':return x.n==='pi'?HP_PI/100n:x.n==='e'?HP_E/100n:null;
@@ -607,9 +641,28 @@ function hpEval(x){switch(x.t){
  default:return null}}
 // décimal fiable : en cas de compensation (somme ≪ termes), valeur recalculée en haute précision
 function hpNumber(x,n){if(!isConst(x)||!(x.t==='a'||x.t==='m'))return n;try{const v=hpEval(x);if(v===null)return n;const s=(v<0n?'-':'')+String(babs(v)).padStart(HP_DIG+1,'0');const r=Number(s.slice(0,s.length-HP_DIG)+'.'+s.slice(s.length-HP_DIG));return Number.isFinite(r)?r:n}catch(_){return n}}
-function numericText(x,scope={}){if(x&&x._complex){const {re,im}=x;return cText(re,im)}if(typeof x==='number')return approxString(x);let n=approx(x,scope);if(Number.isFinite(n)){if(!Object.keys(scope).length)n=hpNumber(x,n);return approxString(n)}const c=complexApprox(x,scope);if(!Number.isFinite(c.re)||!Number.isFinite(c.im))return '—';return cText(c.re,c.im)}
+// ordre de grandeur exact d'une constante hors de la double précision (e^(−10^49), 2^(10^12)…) : m·10^E, E entier exact
+const INV_LN10=434294481903251827651128918916605082294397005803666566114453783165864649209n,LN10_S=10n**75n;// 1/ln 10 × 10^75
+function magnitude(x){if(!isConst(x)||hasI(x))return null;let q=Q(0),fl=0,sg=1;const add_=v=>{fl+=v;er+=Math.abs(v)*2.3e-16};let er=0;// ln|x| = q (rationnel exact) + fl (flottant)
+ const walk=z=>{if(z.t==='q'){if(z.p===0n)return false;if(z.p<0n)sg=-sg;const a=babs(z.p),b=z.q;const la=a.toString().length,lb=b.toString().length;add_(Math.log(Number(a.toString().slice(0,17))/Number(b.toString().slice(0,17)))+(la-Math.min(la,17)-(lb-Math.min(lb,17)))*Math.LN10);return true}
+  if(z.t==='m')return z.a.every(walk);
+  if(z.t==='f'&&z.n==='exp'){const u=z.a[0];if(u.t==='q'){q=qadd(q,u);return true}const v=approx(u);if(!Number.isFinite(v))return false;add_(v);return true}
+  if(z.t==='p'){const b=z.b;if(z.a.t==='s'&&z.a.n==='e'){if(b.t==='q'){q=qadd(q,b);return true}const v=approx(b);if(!Number.isFinite(v))return false;add_(v);return true}
+   const va=approx(z.a);if(!(Number.isFinite(va)&&va!==0))return false;if(va<0){if(b.t==='q'&&qi(b)){if(b.p%2n!==0n)sg=-sg}else return false}const L=Math.log(Math.abs(va));
+   if(b.t==='q'&&L!==0){const r=Q(b.p,b.q);// b·ln|a| : partie entière de b exacte, ln|a| flottant → précision relative 1e−16 sur b·ln|a|
+    add_(Number(b.p)/Number(b.q)*L);return true}
+   const vb=approx(b);if(!Number.isFinite(vb))return false;add_(vb*L);return true}
+  const v=approx(z);if(!Number.isFinite(v)||v===0)return false;if(v<0)sg=-sg;add_(Math.log(Math.abs(v)));return true};
+ if(!walk(x))return null;
+ // log10|x| = (q + fl)/ln 10, q traité en BigInt (75 chiffres)
+ const S18=10n**18n;const qd=q.p*INV_LN10/q.q;// ×10^75
+ let E=qd/LN10_S;let frac=Number((qd-E*LN10_S)/(LN10_S/S18))/1e18;if(qd<0n&&frac!==0){E-=1n;frac+=1}
+ let t=frac+fl/Math.LN10;const ti=Math.floor(t);E+=BigInt(ti);t-=ti;let m=Math.pow(10,t);if(m>=9.9999999999995){m/=10;E+=1n}
+ const el=er/Math.LN10;return{err:el,sign:sg,mant:m,exp:E,digits:el>0.3?0:Math.max(1,Math.min(12,Math.floor(-Math.log10(Math.max(el,1e-13)))-1))}}
+function magText(x){const g=magnitude(x);if(!g)return null;const e=g.exp<0n?'−'+String(-g.exp):String(g.exp);if(!g.digits){const L=Number(g.exp)+Math.log10(g.mant);const k=Math.floor(Math.log10(Math.abs(L)));const sd=Math.max(1,Math.min(12,Math.floor(-Math.log10(g.err/Math.abs(L)))-1));return (g.sign<0?'−':'')+'10^('+(L<0?'−':'')+approxString(Math.abs(L)/Math.pow(10,k),sd)+'·10^'+k+')'}return (g.sign<0?'−':'')+approxString(g.mant,g.digits)+'·10^'+e}
+function numericText(x,scope={}){if(x&&x._complex){const {re,im}=x;return cText(re,im)}if(typeof x==='number')return approxString(x);let n=approx(x,scope);if((n===0||n===Infinity||n===-Infinity)&&!Object.keys(scope).length&&isConst(x)&&!iz(x)){const t=magText(x);if(t)return t}if(Number.isFinite(n)){if(!Object.keys(scope).length)n=hpNumber(x,n);return approxString(n)}const c=complexApprox(x,scope);if(!Number.isFinite(c.re)||!Number.isFinite(c.im))return '—';return cText(c.re,c.im)}
 function cText(re,im){re=Math.abs(re)<1e-12?0:re;im=Math.abs(im)<1e-12?0:im;if(im===0)return approxString(re);const ia=Math.abs(im)===1?'i':approxString(Math.abs(im))+'·i';if(re===0)return (im<0?'−':'')+ia;return approxString(re)+(im<0?' − ':' + ')+ia}
-Object.assign(K,{hpEval,hpNumber,FN_ALIAS,ASSUME,setAssumptions,hasAssumptions,signOfExpr,isNonzeroExpr,isIntegerExpr,parseRaw,leadSign,sortedTerms,babs,bgcd,blcm,isqrt,iroot,factorInt,Q,Z,ONE,MONE,TWO,HALF,qadd,qmul,qneg,qsub,qinv,qdiv,qcmp,qi,iz,io,isNegQ,rn,decimalQ,powQ,S,F,P,PI,E_,I,CONSTS,key,eq,isNum,freeOf,dep,symbols,isConst,hasFn,splitCoeff,mul,add,neg,sub,div,power,fn,FUNCS,expand,substitute,replaceExpr,mapTree,size,parse,str,approx,complexApprox,approxString,numericText,gammaLanczos,isNumericAlg,cpx,hasI,isNonneg,leadingNegative,piMultiple,cosPiQ,sinPiQ,factBig,binom,bernoulli,perfectPower,expandNumeric,lambertApprox,erfApprox});
+Object.assign(K,{magnitude,magText,assumeOK,assumedVars,piDigits,polarExp,reduceAngle,hpEval,hpNumber,FN_ALIAS,ASSUME,setAssumptions,hasAssumptions,signOfExpr,isNonzeroExpr,isIntegerExpr,parseRaw,leadSign,sortedTerms,babs,bgcd,blcm,isqrt,iroot,factorInt,Q,Z,ONE,MONE,TWO,HALF,qadd,qmul,qneg,qsub,qinv,qdiv,qcmp,qi,iz,io,isNegQ,rn,decimalQ,powQ,S,F,P,PI,E_,I,CONSTS,key,eq,isNum,freeOf,dep,symbols,isConst,hasFn,splitCoeff,mul,add,neg,sub,div,power,fn,FUNCS,expand,substitute,replaceExpr,mapTree,size,parse,str,approx,complexApprox,approxString,numericText,gammaLanczos,isNumericAlg,cpx,hasI,isNonneg,leadingNegative,piMultiple,cosPiQ,sinPiQ,factBig,binom,bernoulli,perfectPower,expandNumeric,lambertApprox,erfApprox});
 
 }
 {
@@ -630,7 +683,7 @@ function pmul(a,b){if((++_pgTick&4095)===0&&K.intTimeUp&&K.intTimeUp())throw Err
  if(typeof b==='bigint')return pmul(b,a);const la=a.k,lb=b.k;
  if(la>lb)return pnorm(la,a.c.map(x=>pmul(x,b)));if(lb>la)return pnorm(lb,b.c.map(x=>pmul(a,x)));
  const c=new Array(a.c.length+b.c.length-1).fill(0n);for(let i=0;i<a.c.length;i++){if(a.c[i]===0n)continue;for(let j=0;j<b.c.length;j++)if(b.c[j]!==0n)c[i+j]=padd(c[i+j],pmul(a.c[i],b.c[j]))}return pnorm(la,c)}
-function ppow(a,n){let r=1n,b=a;while(n>0){if(n&1)r=pmul(r,b);b=pmul(b,b);n>>=1}return r}
+function ppow(a,n){if(!(Number.isSafeInteger(n)&&n>=0&&n<=1e5))throw Error('Exposant hors limites pour le développement polynomial');let r=1n,b=a;while(n>0){if(n&1)r=pmul(r,b);b=pmul(b,b);n>>=1}return r}
 function pvar(k,e=1){const c=new Array(e+1).fill(0n);c[e]=1n;return{k,c}}
 function pdeg(a,k){if(typeof a==='bigint')return a===0n?-Infinity:0;if(a.k<k)return 0;if(a.k===k)return a.c.length-1;return Math.max(...a.c.map(x=>pdeg(x,k)))}
 function pdegMain(a,k){return typeof a==='bigint'||a.k!==k?0:a.c.length-1}
@@ -718,6 +771,7 @@ function toRF(e,ks){ // → {n,d} polynômes entiers
   case'a':return z.a.map(T).reduce(addRF);
   case'm':return z.a.map(T).reduce(mulRF);
   case'p':{if(z.b.t==='q'&&qi(z.b)&&babs(z.b.p)<=400n)return powRF(T(z.a),Number(z.b.p));
+   if(z.b.t==='q'&&qi(z.b)){const n=z.b.p<0n?-z.b.p:z.b.p;const k=kernel(P(z.a,Q(n)));return z.b.p<0n?R(1n,k.n):k}// exposant entier gigantesque : puissance gardée comme noyau (jamais développée)
    if(z.b.t==='q'){const r=ks.radicals&&ks.radicals.get(key(z.a));const L=r?r.L:z.b.q;const e=z.b.p*(L/z.b.q);if(z.a.t==='s'||z.a.t==='a'||z.a.t==='f'||z.a.t==='q')return powRF(kernel(P(z.a,Q(1,L))),Number(e));return kernel(z)}
    return kernel(z)}
   case'f':{if(z.n==='exp'&&ks.exps){const terms=z.a[0].t==='a'?z.a[0].a:[z.a[0]];let acc=R(1n);for(const t of terms){const [c,u]=K.splitCoeff(t);const o=ks.exps.get(key(u));if(!o){acc=mulRF(acc,kernel(F('exp',t)));continue}const g=o.g;const n=K.qdiv(c,g);
@@ -1760,6 +1814,24 @@ function verify(F,f,v){try{if(K.symbols(F).has('Ŵ')||(v!=='Ů'&&K.symbols(F).ha
     // hors du domaine réel de f (prolongement complexe seulement) : désaccord de branche toléré si le domaine réel est entièrement confirmé
     if(!Number.isFinite(b)){offReal++;continue}return false}good++;if(Number.isFinite(b))realGood++}}
  return good>=3&&(offReal===0||realGood>=3)}catch(_){return false}}
+// x^m/(xⁿ + c), n ≥ 5 : somme sur les racines rₖ = ρ·e^{iθₖ} de xⁿ = −c, résidus −rₖ^{m+1}/(n·c) ;
+// paires conjuguées → α·ln(x² − 2ρ·cos θ·x + ρ²) − 2β·atan((x − ρ·cos θ)/(ρ·sin θ)) (cos θ, sin θ exacts quand ils s'expriment par radicaux)
+function binomialDen(f,v,depth){const nd=K.numden(f);const pn=polyCoeffs(K.expand(nd.num),v,40),pd=polyCoeffs(K.expand(nd.den),v,40);if(!pn||!pd)return null;const n=pd.length-1;if(n<5||n===6)return null;
+ if(!pd.slice(1,n).every(iz)||!isConst(pd[0])||!isConst(pd[n])||iz(pd[0])||!pn.every(isConst))return null;const nz=pn.map((c,i)=>[c,i]).filter(([c])=>!iz(c));
+ // numérateur polynomial quelconque : division euclidienne puis linéarité sur les monômes xᵐ (m < n)
+ if(nz.length!==1||nz[0][1]>=n){if((depth||0)>2)return null;const x=S(v);const D=nd.den;let Qp=Z,Rm=[];const N=pn.slice();for(let i=N.length-1;i>=n;i--){if(iz(N[i]))continue;const q=div(N[i],pd[n]);Qp=add(Qp,mul(q,power(x,Q(i-n))));N[i]=Z;N[i-n]=sub(N[i-n],mul(q,pd[0]))}
+  let F=Z;const qi_=integ(Qp,v,(depth||0)+1);if(Qp&&!iz(Qp)){if(!qi_)return null;F=add(F,qi_)}for(let i=0;i<n&&i<N.length;i++){if(iz(normal(N[i])))continue;const t=div(mul(N[i],power(x,Q(i))),D);const g=i===n-1?mul(div(N[i],mul(Q(n),pd[n])),fn('ln',fn('abs',D))):binomialDen(t,v,(depth||0)+1);if(!g)return null;F=add(F,g)}return F}
+ const m=nz[0][1];if(m>=n-1&&!(m===n-1))return null;if(m===n-1)return null;// u′/u : logDeriv
+ const k0=div(nz[0][0],pd[n]),c=normal(div(pd[0],pd[n]));const cv=approx(c);if(!Number.isFinite(cv)||cv===0)return null;
+ const R=power(cv>0?c:neg(c),Q(1,n));// ρ = |c|^(1/n) ; xⁿ = −c : angles (2j+1)π/n si c > 0, 2jπ/n si c < 0
+ const x=S(v);const terms=[];const cs=th=>{const C=K.cosPiQ(th),Sn=K.sinPiQ(th);return[C||fn('cos',mul(PI,th)),Sn||fn('sin',mul(PI,th))]};
+ for(let j=0;j<n;j++){const th=cv>0?Q(2*j+1,n):Q(2*j,n);const thv=approx(th);if(thv>1+1e-12)continue;// une racine par paire (0 ≤ θ ≤ π)
+  const [C,Sn]=cs(th);const real=Math.abs(thv)<1e-12||Math.abs(thv-1)<1e-12;
+  // résidu A = −R^{m+1}·e^{i(m+1)θ}/(n·c)
+  const th2=K.qmul(th,Q(m+1));const [C2,S2]=cs(th2);const coef=div(neg(power(R,Q(m+1))),mul(Q(n),c));const al=mul(coef,C2),be=mul(coef,S2);
+  if(real){const r=mul(R,C);terms.push(mul(al,fn('ln',fn('abs',sub(x,r)))));continue}
+  const rc=mul(R,C),rs=mul(R,Sn);terms.push(mul(al,fn('ln',add(power(x,TWO),mul(Q(-2),rc,x),power(R,TWO)))));terms.push(mul(Q(-2),be,fn('atan',div(sub(x,rc),rs))))}
+ return mul(k0,K.calcSimplify(add(...terms)))}
 // f = c·D′/D (c indépendant de v) → c·ln|D|
 function logDeriv(f,v){const nd=K.numden(f);if(!nd||freeOf(nd.den,v)||freeOf(nd.num,v)&&!isConst(nd.num)&&false)return null;const dD=derivative(nd.den,v);if(iz(dD))return null;
  const r=normal(div(nd.num,dD));if(!freeOf(r,v)||iz(r))return null;return mul(r,fn('ln',fn('abs',nd.den)))}
@@ -1813,7 +1885,7 @@ function integWhole(f,v,depth){
  const x=S(v);const ok=F=>F&&verify(F,f,v)?F:null;let r;
  // 0. formes reconnues avant les méthodes générales (résultats plus simples) : u′/u, x^(k−1)·R(x^k), (x − a)^p·(x − b)^q avec p + q = −2,
  //    binôme de Tchebychev x^m·(a + b·x^n)^p, radicande à facteur carré √(Q²·R) = |Q|·√R
- for(const rule of [logDeriv,powSubst,eulerPair,chebyshevBinomial,sqrtSquare,signFactor]){if(K._ruleOff&&K._ruleOff.includes(rule.name))continue;try{r=ok(rule(f,v,depth))}catch(_){r=null}if(r)return r}
+ for(const rule of [logDeriv,powSubst,binomialDen,eulerPair,chebyshevBinomial,sqrtSquare,signFactor]){if(K._ruleOff&&K._ruleOff.includes(rule.name))continue;try{r=ok(rule(f,v,depth))}catch(_){r=null}if(r)return r}
  // 1. table
  r=ok(tableAffine(f,v));if(r)return r;
  // 2. polynôme / fraction rationnelle
@@ -3174,7 +3246,30 @@ function solvePolyFactor(e,v,notes){const c=polyCoeffs(e,v,64).map(normal);const
   if(n===3){const r=cubicExact(c);if(r)return{sols:r}}
   if(n===4){const r=quarticExact(c,v);if(r)return{sols:r}}
   notes.push('Degré '+n+' sans formule par radicaux trouvée : racines numériques (Aberth).');return{sols:numericPolyRoots(c),approx:true}}
+ if(SYMRAD&&n===3){const r=cubicSymbolic(c,notes);if(r)return{sols:r}}
+ if(SYMRAD&&n===4){const r=quarticSymbolic(c,notes);if(r)return{sols:r}}
  notes.push('Coefficients symboliques de degré '+n+' : solutions non explicitées');return{sols:[],approx:true}}
+// Ferrari à coefficients symboliques : x = s + y, y⁴ + p·y² + q·y + r = 0 ; m racine (Cardan) de 8m³ + 8p·m² + (2p² − 8r)·m − q² = 0,
+// y = (ε·√(2m) ± √(−2p − 2m − ε·2q/√(2m)))/2, ε = ±1 (valable si m ≠ 0, c.-à-d. q ≠ 0 ou cas bicarré traité à part)
+function quarticSymbolic(c,notes){const [e0,d,cc,b,a]=c;if(iz(a))return null;const A=div(b,a),B=div(cc,a),C=div(d,a),D=div(e0,a);
+ const p=normal(sub(B,mul(Q(3,8),A,A))),q=normal(add(sub(C,mul(HALF,A,B)),mul(Q(1,8),power(A,Q(3))))),r=normal(add(sub(D,mul(Q(1,4),A,C)),sub(mul(Q(1,16),A,A,B),mul(Q(3,256),power(A,Q(4))))));
+ const shift=normal(div(neg(A),Q(4)));if(iz(q))return null;// bicarré : traité par la substitution y = x²
+ const mm=S('ṁ');const res=[];const cr=cubicSymbolic([neg(mul(q,q)),sub(mul(TWO,p,p),mul(Q(8),r)),mul(Q(8),p),Q(8)],[]);if(!cr||!cr.length)return null;const m=cr[0];
+ const s2m=power(mul(TWO,m),HALF);const out=[];
+ for(const eps of [1,-1]){const inner=power(sub(sub(mul(Q(-2),p),mul(TWO,m)),mul(Q(eps),div(mul(TWO,q),s2m))),HALF);for(const sg of [1,-1])out.push(add(shift,div(add(mul(Q(eps),s2m),mul(Q(sg),inner)),TWO)))}
+ notes.push('Formule de Ferrari (coefficients symboliques) : x = '+(iz(shift)?'':str(shift)+' + ')+'(ε·√(2m) ± √(−2p − 2m − 2ε·q/√(2m)))/2, m racine de la résolvante 8m³ + 8p·m² + (2p² − 8r)·m − q² = 0 (Cardan), p = '+str(p)+', q = '+str(q)+', r = '+str(r)+' ; valable si m ≠ 0');
+ return out}
+// Cardan à coefficients symboliques : x = s + u − P/(3u), u = ∛(−Q/2 + √(Q²/4 + P³/27)), u·ω, u·ω² (ω = e^(2iπ/3)) ;
+// w = −P/(3u) impose u·w = −P/3 sans choix de branche ; si P = 0 : x = s + ∛(−Q)·ωᵏ
+function cubicSymbolic(c,notes){const [d,cc,b,a]=c;if(iz(a))return null;
+ const P=normal(div(sub(mul(Q(3),a,cc),mul(b,b)),mul(Q(3),a,a))),Qc=normal(div(add(sub(mul(TWO,power(b,Q(3))),mul(Q(9),a,b,cc)),mul(Q(27),a,a,d)),mul(Q(27),power(a,Q(3)))));
+ const shift=normal(div(neg(b),mul(Q(3),a)));const om=div(add(MONE,mul(I,power(Q(3),HALF))),TWO),om2=div(sub(MONE,mul(I,power(Q(3),HALF))),TWO);
+ if(iz(P)){const u=power(neg(Qc),Q(1,3));notes.push('Formule de Cardan (P = 0) : x = '+(iz(shift)?'':str(shift)+' + ')+'∛(−Q)·ωᵏ, ω = e^(2iπ/3)');return[tidy(add(shift,u)),tidy(add(shift,mul(om,u))),tidy(add(shift,mul(om2,u)))]}
+ const D=normal(add(div(mul(Qc,Qc),Q(4)),div(power(P,Q(3)),Q(27))));const u=power(add(div(neg(Qc),TWO),power(D,HALF)),Q(1,3));
+ const root=w=>add(shift,w,neg(div(P,mul(Q(3),w))));
+ notes.push('Formule de Cardan (coefficients symboliques) : x = s + u − P/(3u), u = ∛(−Q/2 + √Δ), Δ = Q²/4 + P³/27 = '+str(D)+' ; racines cubiques complexes principales ; valable si u ≠ 0 (pour P = 0 : x = s + ∛(−Q)·ωᵏ)');
+ if(!iz(shift))notes.push('Changement de variable x = y + '+str(shift)+' : y³ + P·y + Q = 0 avec P = '+str(P)+', Q = '+str(Qc));
+ return[root(u),root(mul(om,u)),root(mul(om2,u))]}
 function cubicExact(c){ // a·x³+b·x²+c·x+d, coefficients réels exacts
  const [d,cc,b,a]=c;const p=normal(div(sub(mul(Q(3),a,cc),mul(b,b)),mul(Q(3),a,a))),q=normal(div(add(sub(mul(TWO,power(b,Q(3))),mul(Q(9),a,b,cc)),mul(Q(27),a,a,d)),mul(Q(27),power(a,Q(3)))));
  const shift=div(neg(b),mul(Q(3),a));const disc=normal(add(div(mul(q,q),Q(4)),div(power(p,Q(3)),Q(27))));const dv=approx(disc);
@@ -3197,13 +3292,16 @@ function quarticExact(c,v){ // Ferrari lorsque la cubique résolvante a une raci
  const sq=power(mul(TWO,m),HALF);const y=S('ỹ');const out=[];
  for(const s of [1,-1]){const quad=add(power(y,TWO),mul(Q(s),sq,y),add(div(p,TWO),m),mul(Q(-s),div(q,mul(TWO,sq))));const r2=solvePolyExpr(quad,'ỹ');for(const yy of r2.sols)out.push(tidy(sub(yy,div(b,Q(4)))))}
  return out}
-function numericPolyRoots(c){const co=c.map(z=>approx(z));const n=co.length-1;const lead=co[n];const a=co.map(z=>z/lead);
+function numericPolyRoots(c){const co0=c.map(z=>approx(z));let lo=0;while(lo<co0.length-1&&co0[lo]===0)lo++;const co=co0.slice(lo);const zeros=Array(lo).fill(Z);if(co.length<2)return zeros;const n=co.length-1;const lead=co[n];
+ // mise à l'échelle x = s·y (borne de Fujiwara) : racines de taille 1, tolérances relatives (racines 10⁻¹³ comme 10¹³)
+ let sc=0;for(let k=1;k<=n;k++){const v=Math.abs(co[n-k]/lead);if(v>0)sc=Math.max(sc,Math.pow(v,1/k))}if(!(sc>0)||!Number.isFinite(sc))sc=1;
+ const a=co.map((z,j)=>z/lead*Math.pow(sc,j-n));
  const C=(re,im=0)=>({re,im}),cm=(u,w)=>C(u.re*w.re-u.im*w.im,u.re*w.im+u.im*w.re),cd=(u,w)=>{const d=w.re*w.re+w.im*w.im;return C((u.re*w.re+u.im*w.im)/d,(u.im*w.re-u.re*w.im)/d)};
  const R=1+Math.max(...a.slice(0,n).map(Math.abs));let z=Array.from({length:n},(_,k)=>C(R*Math.cos(2*Math.PI*k/n+.4),R*Math.sin(2*Math.PI*k/n+.4)));
  const ev=w=>{let r=C(1);for(let j=n-1;j>=0;j--)r={re:r.re*w.re-r.im*w.im+a[j],im:r.re*w.im+r.im*w.re};return r};
  for(let it=0;it<500;it++){let mv=0;for(let i=0;i<n;i++){let den=C(1);for(let j=0;j<n;j++)if(j!==i)den=cm(den,C(z[i].re-z[j].re,z[i].im-z[j].im));const dz=cd(ev(z[i]),den);z[i]=C(z[i].re-dz.re,z[i].im-dz.im);mv=Math.max(mv,Math.hypot(dz.re,dz.im))}if(mv<1e-15)break}
- return z.map(w=>({re:Math.abs(w.re)<1e-12?0:w.re,im:Math.abs(w.im)<1e-12?0:w.im})).sort((u,w)=>u.re-w.re||u.im-w.im).map(w=>w.im===0?numQ(w.re):add(numQ(w.re),mul(numQ(w.im),I)))}
-function numQ(x){const s=String(Number(x.toPrecision(14)));return /e/.test(s)?K.decimalQ(x.toFixed(20)):K.decimalQ(s)}
+ return [...zeros,...z.map(w=>{const m=Math.hypot(w.re,w.im);return{re:Math.abs(w.re)<1e-12*m?0:w.re*sc,im:Math.abs(w.im)<1e-12*m?0:w.im*sc}}).sort((u,w)=>u.re-w.re||u.im-w.im).map(w=>w.im===0?numQ(w.re):add(numQ(w.re),mul(numQ(w.im),I)))]}
+function numQ(x){return K.decimalQ(String(Number(x.toPrecision(14))))}
 // doublons : égalité exacte ; deux valeurs numériquement voisines ne sont fusionnées que si leur différence n'est pas prouvée non nulle (rationnels distincts, ou écart haute précision ≠ 0)
 function dedupe(list){const out=[];for(const s of list){if(out.some(o=>eq(o,s)))continue;const cs=complexApprox(s,{});
  if(Number.isFinite(cs.re)&&out.some(o=>{const co=complexApprox(o,{});if(!(Math.hypot(co.re-cs.re,co.im-cs.im)<1e-11*Math.max(1,Math.hypot(cs.re,cs.im))&&isConst(s)&&isConst(o)))return false;
@@ -3383,13 +3481,22 @@ function checkSolution(E,v,s,realOnly){const syms=[...symbols(E)].filter(z=>z!==
    try{const h=K.hpEval?K.hpEval(normal(ex)):null;if(h!==null&&(h<0n?-h:h)<=10n**30n)continue}catch(_){}return false}}
  return true}
 function isRealExprBroken(e,env){let broken=false;mapTree(e,z=>{if(z.t==='f'&&(z.n==='ln'||z.n==='sqrt')){const a=approx(z.a[0],env);if(Number.isFinite(a)&&a<=0&&z.n==='ln')broken=true;if(Number.isFinite(a)&&a<0&&z.n==='sqrt')broken=true}if(z.t==='p'&&z.b.t==='q'&&!qi(z.b)&&z.b.q%2n===0n){const a=approx(z.a,env);if(Number.isFinite(a)&&a<0)broken=true}return z});return broken}
-function respectsAssumptions(v,s){const A=K.ASSUME;const real=A.pos.has(v)||A.neg.has(v)||A.nonneg.has(v)||A.nonpos.has(v)||A.integer.has(v);
+// familles a + b·k (k ∈ ℤ) restreintes à un intervalle borné déclaré : liste finie des valeurs admissibles
+function expandFamilies(sols,v){const b=K.ASSUME.bounds.get(v);if(!b||b.lo===undefined||b.hi===undefined)return null;const out=[];let rest=false;
+ for(const s of sols){if(typeof s==='string'||!dep(s,'k')){if(respectsAssumptions(v,s))out.push(s);continue}const pc=polyCoeffs(s,'k',1);if(!pc||pc.length!==2||!isConst(pc[0])||!isConst(pc[1])){rest=true;out.push(s);continue}
+  const a=approx(pc[0]),d=approx(pc[1]);if(!(d!==0&&Number.isFinite(a)&&Number.isFinite(d))){rest=true;out.push(s);continue}let k1=Math.floor((b.lo-a)/d),k2=Math.ceil((b.hi-a)/d);if(k1>k2)[k1,k2]=[k2,k1];if(k2-k1>400){rest=true;out.push(s);continue}
+  for(let k=k1-1;k<=k2+1;k++){const z=K.calcSimplify(substitute(s,{k:Q(k)}));if(respectsAssumptions(v,z))out.push(z)}}
+ const fin=out.filter(z=>typeof z==='string'||!dep(z,'k'));fin.sort((p,q)=>{const x=typeof p==='string'?0:approx(p),y=typeof q==='string'?0:approx(q);return x-y});
+ return{sols:rest?out:fin,families:rest,note:rest?'Hypothèses : intervalle trop large pour énumérer toutes les valeurs de k':'Familles k ∈ ℤ restreintes à l’intervalle déclaré ('+K.ASSUME.text+') : '+fin.length+' solution(s)'}}
+function respectsAssumptions(v,s){const A=K.ASSUME;const real=A.pos.has(v)||A.neg.has(v)||A.nonneg.has(v)||A.nonpos.has(v)||A.integer.has(v)||!!(A.bounds&&A.bounds.has(v));
  if(isConst(s)){const c=complexApprox(s);if(!Number.isFinite(c.re))return true;if(real&&Math.abs(c.im)>1e-9*Math.max(1,Math.abs(c.re)))return false;const r=c.re;
-  if(A.pos.has(v)&&!(r>1e-12))return false;if(A.neg.has(v)&&!(r<-1e-12))return false;if(A.nonneg.has(v)&&r<-1e-12)return false;if(A.nonpos.has(v)&&r>1e-12)return false;if(A.nonzero.has(v)&&Math.abs(r)<1e-12&&Math.abs(c.im)<1e-12)return false;if(A.integer.has(v)&&Math.abs(r-Math.round(r))>1e-9)return false;return true}
+  let x=r;if(Math.abs(x)<1e-9&&iz(normal(s)))x=0;return K.assumeOK(v,x)}
  const sg=K.signOfExpr(s);if(sg===null)return true;if(A.pos.has(v)&&sg!==1)return false;if(A.neg.has(v)&&sg!==-1)return false;if(A.nonneg.has(v)&&sg===-1)return false;if(A.nonpos.has(v)&&sg===1)return false;return true}
 // ---------- interface ----------
 function parseEquation(src){const bits=String(src).split('=');if(bits.length>2)throw Error('Une seule égalité attendue');const L=K.parse(bits[0]),R=bits.length===2?K.parse(bits[1]):Z;return sub(L,R)}
-function solveEq(src,v='x',opts={}){
+let SYMRAD=false;// Cardan/Ferrari symboliques : seulement pour une résolution demandée par l’utilisateur (opts.symRadicals), pas pour les appels internes
+function solveEq(src,v='x',opts={}){const sv=SYMRAD;SYMRAD=!!opts.symRadicals;try{return solveEq1(src,v,opts)}finally{SYMRAD=sv}}
+function solveEq1(src,v='x',opts={}){
  const E=typeof src==='string'?parseEquation(src):src;const notes=[];
  const realOnly=hasFn(E,['ln','log','sqrt','asin','acos','abs'])||(()=>{let r=false;mapTree(E,z=>{if(z.t==='p'&&z.b.t==='q'&&!qi(z.b)&&dep(z.a,v))r=true;return z});return r})();
  IMPOSS=[];INCOMPLETE=false;let res=null;try{res=solveCore(E,v,0,notes)}catch(err){if(!/série|Division/.test(err.message))notes.push('Méthode exacte interrompue : '+err.message);res=null}
@@ -3397,6 +3504,7 @@ function solveEq(src,v='x',opts={}){
  if(res&&res.sols.length){let sols=dedupe(res.sols.map(s=>tidy(s)));
   const kept=[];for(const s of sols){const ok=checkSolution(E,v,s,realOnly);if(ok!==false)kept.push(s)}
   if(kept.length<sols.length)notes.push((sols.length-kept.length)+' solution(s) parasite(s) éliminée(s) par vérification');if(!kept.length&&!res.families&&!res.approx)notes.unshift('Aucune solution réelle');
+  if(res.families&&K.ASSUME.bounds&&K.ASSUME.bounds.has(v)){const ex=expandFamilies(kept,v);if(ex){kept.length=0;kept.push(...ex.sols);res={...res,families:ex.families};if(!ex.families){const i=notes.indexOf('k ∈ ℤ');if(i>=0)notes.splice(i,1)}notes.push(ex.note)}}
   if(K.hasAssumptions()&&!res.families){const before=kept.length;for(let i=kept.length-1;i>=0;i--)if(!respectsAssumptions(v,kept[i]))kept.splice(i,1);if(kept.length<before)notes.push((before-kept.length)+' solution(s) exclue(s) par les hypothèses ('+K.ASSUME.text+')')}
   if(res.families){// familles réelles : on écarte les racines complexes isolées et celles déjà contenues dans une famille
    const fams=kept.filter(z=>dep(z,'k')),aff=fams.map(F=>{const a=approx(F,{k:0}),b=approx(F,{k:1});return[a,b-a]});
@@ -4743,7 +4851,7 @@ Object.assign(K.PDE,{separate,bvp2D,evalPlate,radialDisk,besselZerosJ0,bessel01,
 // Linéaires : Gauss–Jordan exact (familles paramétrées). Polynomiaux : base de Gröbner (Buchberger,
 // ordre lexicographique, critère des monômes premiers entre eux) puis remontée triangulaire.
 'use strict';
-const {Q,Z,ONE,MONE,S,key,eq,mul,add,sub,neg,div,power,normal,simplify,str,iz,io,dep,freeOf,derivative,substitute,approx,complexApprox,isConst,symbols,polyCoeffs}=K;
+const {TWO,PI,fn,Q,Z,ONE,MONE,S,key,eq,mul,add,sub,neg,div,power,normal,simplify,str,iz,io,dep,freeOf,derivative,substitute,approx,complexApprox,isConst,symbols,polyCoeffs}=K;
 const nrm=x=>x.t==='q'?x:normal(x);
 // ---------- polynômes distribués à coefficients symboliques ----------
 function toDistPoly(e,vars){const ex=K.expand(normal(K.numden(e).num),20000);const terms=new Map();const list=ex.t==='a'?ex.a:[ex];
@@ -4773,7 +4881,7 @@ function groebner(F){let G=F.filter(p=>p.length).map(monic);const pairs=[];for(l
 const fromDistPoly=(p,vars)=>add(...p.map(t=>mul(t.c,...t.e.map((x,i)=>power(S(vars[i]),Q(x))))));
 // ---------- résolution ----------
 function isLinear(E,vars){for(const v of vars){let d;try{d=derivative(E,v)}catch(_){return false}if(vars.some(w=>dep(d,w)))return false}return true}
-function solveSystem(eqSrc,vars){
+function solveSystem0(eqSrc,vars){
  if(K.SOLVE_DEADLINE&&Date.now()>K.SOLVE_DEADLINE)throw Error('Délai de calcul dépassé');
  if(!vars.length||new Set(vars).size!==vars.length)throw Error('Inconnues distinctes requises (ex. x,y)');
  const Es=eqSrc.map(s=>typeof s==='string'?K.parseEquation(s):s);const notes=[];
@@ -4794,18 +4902,81 @@ function solveSystem(eqSrc,vars){
     for(const val of r.sols){const ok=cand.slice(1).every(e=>{const z=complexApprox(substitute(e,{[v]:val}),probe(e));return !Number.isFinite(z.re)||Math.hypot(z.re,z.im)<1e-7});if(!ok)continue;rec(i-1,{...assign,[v]:val})}};
    try{rec(vars.length-1,{})}catch(e){notes.push(e.message)}
    const clean=sols.map(s=>Object.fromEntries(vars.map(v=>[v,K.calcSimplify(simplify(substitute(s[v],s)))])));
-   const verified=clean.filter(s=>verifySys(Es,vars,s));const uniq=[];for(const s of verified)if(!uniq.some(u=>vars.every(v=>sameVal(u[v],s[v]))))uniq.push(s);
+   verifySys.domainHit=false;const verified=clean.filter(s=>verifySys(Es,vars,s));
+   if(!verified.length&&clean.length&&verifySys.domainHit)return{sols:[],kind:'none',notes:['Base de Gröbner (ordre lexicographique '+vars.join(' > ')+') et remontée triangulaire','Aucune solution : '+clean.map(s=>'('+vars.map(v=>v+' = '+str(s[v])).join(', ')+')').join(', ')+' annule un dénominateur de l’équation initiale']};const uniq=[];for(const s of verified)if(!uniq.some(u=>vars.every(v=>sameVal(u[v],s[v]))))uniq.push(s);
    if(uniq.length||!sols.length)return{sols:uniq,approx:approxFlag,notes:['Base de Gröbner (ordre lexicographique '+vars.join(' > ')+') et remontée triangulaire',...notes]}}}
  // substitution : une équation linéaire en une inconnue
  for(let i=0;i<Es.length;i++)for(const v of vars){const c=polyCoeffs(Es[i],v,1);if(!c||c.length!==2||vars.some(w=>dep(c[1],w)))continue;const val=normal(div(neg(c[0]),c[1]));const rest=Es.filter((_,j)=>j!==i).map(E=>substitute(E,{[v]:val}));const others=vars.filter(w=>w!==v);
-  try{let sub;if(others.length===1&&rest.length===1){const r=K.solveEq(rest[0],others[0]);if(r.approx)continue;sub={sols:r.sols.map(x=>({[others[0]]:x}))}}else sub=solveSystem(rest,others);
+  try{let sub;if(others.length===1&&rest.length===1){const r=K.solveEq(rest[0],others[0]);if(r.approx)continue;sub={sols:r.sols.map(x=>({[others[0]]:x}))}}else sub=solveSystem0(rest,others);
    const sols=sub.sols.map(s=>({...s,[v]:K.calcSimplify(substitute(val,s))})).filter(s=>verifySys(Es,vars,s));if(sols.length)return{sols,notes:['Substitution']}}catch(_){}}
+ // sin/cos/tan(m·π·k + u), k ∈ ℤ (famille) : (−1)^(m·k)·sin(u), …
+ function kShift(e){return K.mapTree(e,z=>{if(z.t!=='f'||!['sin','cos','tan','cot'].includes(z.n)||z.a[0].t!=='a')return z;let m=null;const rest=[];for(const t of z.a[0].a){const c=div(t,mul(PI,S('k')));if(c.t==='q'&&c.q===1n&&m===null){m=c;continue}rest.push(t)}if(!m)return z;const u=add(...rest);const odd=(m.p%2n)!==0n;
+  if(z.n==='tan'||z.n==='cot')return fn(z.n,u);return odd?mul(power(MONE,S('k')),fn(z.n,u)):fn(z.n,u)})}
+ // substitution à coefficient variable : a(w)·v + b(w) = 0 avec a non constant → v = −b/a si a ≠ 0, plus la branche a = b = 0 ;
+ // l'équation restante peut avoir des familles (k ∈ ℤ), ex. système balistique x·sin(y) = c₁ ; x²·sin(2y) = c₂
+ for(let i=0;i<Es.length;i++)for(const v of vars){const c=polyCoeffs(Es[i],v,1);if(!c||c.length!==2||dep(c[1],v)||!vars.some(w=>dep(c[1],w)))continue;const others=vars.filter(w=>w!==v);if(others.length!==1)continue;
+  const val=normal(div(neg(c[0]),c[1]));const rest=Es.filter((_,j)=>j!==i).map(E=>substitute(E,{[v]:val}));if(rest.length!==1)continue;
+  try{const r=K.solveEq(rest[0],others[0]);if(!r||r.approx||!r.sols.length)continue;
+   const sols=[];for(const x0 of r.sols){if(typeof x0==='string')continue;const s0={[others[0]]:x0};const vv=K.mapTree(K.calcSimplify(kShift(K.calcSimplify(substitute(val,s0)))),z=>z.t==='p'&&eq(z.a,MONE)&&eq(z.b,neg(S('k')))?power(MONE,S('k')):z);const s1={...s0,[v]:vv};
+    const okK=[0,1,-1].every(k=>{const sk=dep(x0,'k')?Object.fromEntries(Object.entries(s1).map(([n,e])=>[n,substitute(e,{k:Q(k)})])):s1;const a=complexApprox(substitute(c[1],sk));if(!(Math.hypot(a.re,a.im)>1e-12))return false;return verifySys(Es,vars,sk)});if(okK)sols.push(s1)}
+   if(!sols.length)continue;const notes=['Substitution '+v+' = '+str(val)+' (valable si '+str(c[1])+' ≠ 0)'];if(r.families)notes.push('k ∈ ℤ');
+   // branche a = 0 : alors b = 0 doit aussi être vérifiée
+   if(isConst(c[0])&&!iz(normal(c[0])))notes.push('Branche '+str(c[1])+' = 0 impossible ('+str(c[0])+' ≠ 0)');
+   else{let br=null;try{br=solveSystem0([c[1],c[0],...Es.filter((_,j)=>j!==i)],vars)}catch(_){br=null}if(br&&br.sols&&br.sols.length&&!br.approx)sols.push(...br.sols);else if(!br)notes.push('Branche '+str(c[1])+' = 0 non explorée')}
+   return{sols,families:!!r.families,notes}}catch(_){}}
  // numérique
  if(vars.length===2&&Es.length===2){const roots=newton2(Es,vars);return{sols:roots,approx:true,notes:['Newton multi-départs (approché, non exhaustif)']}}
  throw Error('Système hors des classes traitées (linéaire, polynomial, substitution)')}
+// domaine des équations initiales (dénominateurs avant simplification) : solution rejetée si elle annule un dénominateur ;
+// pour une famille paramétrée, valeurs interdites du paramètre (x = t, t ≠ 1)
+// hypothèses déclarées (bornes, signes, entiers) appliquées réellement aux solutions ; représentants numériques ramenés modulo la période exacte
+function solveSystem(eqSrc,vars,opts={}){const r=solveSystemD(eqSrc,vars);if(!opts.user)return r;try{return assumePost(r,eqSrc,vars)}catch(_){return r}}// opts.user : résolution demandée par l’utilisateur (hypothèses, représentants modulo la période)
+function assumePost(r,eqSrc,vars){if(!r||!r.sols)return r;const Es=eqSrc.map(s=>typeof s==='string'?K.parseEquation(s):s);const av=K.assumedVars();const touched=vars.filter(v=>av.has(v));const B=K.ASSUME.bounds||new Map();const notes=[...(r.notes||[])];
+ if(r.approx){// solutions numériques (Newton) : période exacte de chaque inconnue n'apparaissant que dans des fonctions trigonométriques
+  const per={};for(const v of vars){let T=null;let ok=true;for(const E of Es){if(!dep(E,v))continue;const t=K.periodOf?K.periodOf(E,v):null;if(!t){ok=false;break}if(!T)T=t;else{const q=normal(div(T,t));if(q.t!=='q'){ok=false;break}T=K.calcSimplify(mul(T,Q(q.q)))}}if(ok&&T)per[v]=T}
+  let pts=r.sols.map(s=>Object.fromEntries(vars.map(v=>[v,typeof s[v]==='string'?Number(String(s[v]).replace(/−/g,'-').replace(/·/g,'')):approx(s[v])])));if(pts.some(p=>vars.some(v=>!Number.isFinite(p[v]))))return r;
+  const exp=[];for(const p of pts){let cands=[p];for(const v of Object.keys(per)){const T=approx(per[v]);const b=B.get(v);const nx=[];for(const c of cands){const x=c[v];if(b&&b.lo!==undefined&&b.hi!==undefined&&(b.hi-b.lo)/T<=50){for(let j=Math.ceil((b.lo-x)/T)-1;j<=Math.floor((b.hi-x)/T)+1;j++)nx.push({...c,[v]:x+j*T})}else{const lo=b&&b.lo!==undefined?b.lo:-T/2;const j=Math.ceil((lo-x)/T);let y=x+j*T;if(!(b&&b.lo!==undefined)&&y<=-T/2+1e-12*T)y+=T;nx.push({...c,[v]:y})}}cands=nx}exp.push(...cands)}
+  const d=Es.map(e=>vars.map(v=>derivative(e,v)));const polish=p=>{if(vars.length!==2||Es.length!==2)return p;let X=[p[vars[0]],p[vars[1]]];for(let it=0;it<8;it++){const env={[vars[0]]:X[0],[vars[1]]:X[1]};const f=Es.map(z=>approx(z,env)),J=d.map(r=>r.map(z=>approx(z,env)));const det=J[0][0]*J[1][1]-J[0][1]*J[1][0];if(!Number.isFinite(det)||!det)break;const dx=[(f[0]*J[1][1]-f[1]*J[0][1])/det,(f[1]*J[0][0]-f[0]*J[1][0])/det];const Y=[X[0]-dx[0],X[1]-dx[1]];if(!Y.every(Number.isFinite))break;X=Y;if(Math.max(Math.abs(dx[0]),Math.abs(dx[1]))<1e-16*Math.max(1,Math.abs(X[0]),Math.abs(X[1])))break}return{[vars[0]]:X[0],[vars[1]]:X[1]}};
+  const kept=[];for(const p0 of exp){const p=polish(p0);if(!vars.every(v=>K.assumeOK(v,p[v])))continue;if(!Es.every(E=>{const z=approx(E,p);return Number.isFinite(z)&&Math.abs(z)<1e-7}))continue;if(kept.some(q=>vars.every(v=>Math.abs(q[v]-p[v])<=1e-8*Math.max(1,Math.abs(p[v])))))continue;kept.push(p)}
+  kept.sort((a,b)=>{for(const v of vars){const d=a[v]-b[v];if(Math.abs(d)>1e-9)return d}return 0});
+  const pv=Object.keys(per);if(pv.length)notes.push('Représentants distincts modulo la période : '+pv.map(v=>v+' (période '+str(per[v])+')').join(', ')+(pv.some(v=>!B.has(v))?' ; '+pv.filter(v=>!B.has(v)).map(v=>v+' ∈ ]−T/2 ; T/2]').join(', '):''));
+  if(touched.length){notes.push('Hypothèses appliquées aux solutions : '+K.ASSUME.text+' ('+(exp.length-kept.length)+' représentant(s) écarté(s))')}
+  return{...r,sols:kept.map(p=>Object.fromEntries(vars.map(v=>[v,K.numericText(p[v])]))),notes}}
+ if(!touched.length)return r;
+ const out=[];let dropped=0,unapplied=false;
+ for(const sol of r.sols){const fam=vars.some(v=>sol[v]&&typeof sol[v]!=='string'&&dep(sol[v],'k'));
+  if(fam){// énumération de k : par une inconnue affine en k bornée des deux côtés
+   let range=null;for(const v of touched){const b=B.get(v);if(!b||b.lo===undefined||b.hi===undefined)continue;const pc=polyCoeffs(sol[v],'k',1);if(!pc||pc.length!==2||!isConst(pc[0])||!isConst(pc[1]))continue;const a=approx(pc[0]),d=approx(pc[1]);if(!d)continue;let k1=Math.floor((b.lo-a)/d),k2=Math.ceil((b.hi-a)/d);if(k1>k2)[k1,k2]=[k2,k1];range=[k1-1,k2+1];break}
+   if(!range||range[1]-range[0]>400){// famille non bornée : hypothèse vérifiée selon la parité de k ? (valeurs exactes en k = −4…5)
+    const subK=(k)=>Object.fromEntries(Object.entries(sol).filter(([n])=>n!=='__conds').map(([n,e])=>[n,typeof e==='string'?e:K.calcSimplify(substitute(e,{k:k}))]));
+    const good=[0,1].map(r=>[-4,-2,0,2,4].map(j=>okSol(subK(Q(j+r)))));const all=good.map(g=>g.every(Boolean)),none=good.map(g=>!g.some(Boolean));
+    if(all[0]&&all[1]){out.push(sol);continue}if(none[0]&&none[1]){dropped++;continue}
+    if((all[0]||none[0])&&(all[1]||none[1])){const par=e=>K.mapTree(e,z=>{if(z.t==='p'&&eq(z.a,MONE)&&dep(z.b,'k')){const pc=polyCoeffs(z.b,'k',1);if(pc&&pc.length===2&&pc[1].t==='q'&&pc[1].q===1n&&pc[1].p%2n===0n&&pc[0].t==='q'&&pc[0].q===1n)return pc[0].p%2n===0n?ONE:MONE}return z});for(const r of [0,1])if(all[r]){const kk=add(mul(TWO,S('k')),Q(r));out.push(Object.fromEntries(Object.entries(sol).filter(([n])=>n!=='__conds').map(([n,e])=>[n,typeof e==='string'?e:K.calcSimplify(par(substitute(e,{k:kk})))])))}notes.push('Hypothèses vérifiées pour k '+(all[0]?'pair':'impair')+' : k remplacé par 2·k'+(all[1]&&!all[0]?' + 1':''));continue}
+    unapplied=true;out.push(sol);continue}
+   for(let k=range[0];k<=range[1];k++){const sk=Object.fromEntries(Object.entries(sol).filter(([n])=>n!=='__conds').map(([n,e])=>[n,typeof e==='string'?e:K.calcSimplify(substitute(e,{k:Q(k)}))]));if(okSol(sk))out.push(sk);else dropped++}continue}
+  if(okSol(sol))out.push(sol);else dropped++}
+ function okSol(s){return touched.every(v=>{const e=s[v];if(e===undefined||typeof e==='string'&&!Number.isFinite(Number(e.replace(/−/g,'-'))))return true;if(typeof e!=='string'&&!isConst(e))return true;const c=typeof e==='string'?{re:Number(e.replace(/−/g,'-')),im:0}:complexApprox(e);if(Math.abs(c.im)>1e-9*Math.max(1,Math.abs(c.re)))return false;let x=c.re;if(typeof e!=='string'&&Math.abs(x)<1e-9&&iz(normal(e)))x=0;return K.assumeOK(v,x)})}
+ const fams=out.some(s=>vars.some(v=>s[v]&&typeof s[v]!=='string'&&dep(s[v],'k')));
+ notes.push('Hypothèses appliquées aux solutions : '+K.ASSUME.text+(dropped?' ('+dropped+' solution(s) écartée(s))':'')+(unapplied?' — famille non bornée : hypothèses non vérifiables pour tout k':''));
+ const nn=fams?notes:notes.filter(n=>n!=='k ∈ ℤ');
+ return{...r,sols:out,families:fams,notes:nn}}
+function solveSystemD(eqSrc,vars){const r=solveSystem0(eqSrc,vars);if(!r||!r.sols||!r.sols.length||r.approx)return r;
+ const hs=new Map();for(const src of eqSrc){if(typeof src!=='string')continue;const parts=src.split('=');for(const part of parts){if(!part.trim())continue;let cs=[];try{cs=K.collectConds(K.parseRaw(part),false)}catch(_){continue}for(const c of cs)if(['ne0','gt0','ge0','le1'].includes(c.type)&&vars.some(v=>dep(c.e,v)))hs.set(c.type+'|'+key(c.e),{type:c.type,e:c.e})}}
+ if(!hs.size)return r;const notes=[...(r.notes||[])];const kept=[];let dropped=0;
+ for(const sol of r.sols){if(Object.values(sol).some(x=>typeof x==='string')){kept.push(sol);continue}const excl=[];let bad=false;
+  for(const h0 of hs.values()){const h=h0.e;let hv;try{hv=K.calcSimplify(substitute(h,sol))}catch(_){continue}const ps=[...symbols(hv)].filter(z=>/^t\d*$/.test(z));
+   const rel=h0.type==='ne0'?' ≠ 0':h0.type==='gt0'?' > 0':h0.type==='ge0'?' ≥ 0':'';
+   if(!ps.length){const val=approx(hv);if(h0.type==='ne0'?iz(normal(hv)):h0.type==='gt0'?!(val>0):h0.type==='ge0'?!(val>=-1e-14):!(Math.abs(val)<=1+1e-14)){bad=true;break}continue}
+   if(h0.type==='ne0'){if(ps.length===1){let rr;try{rr=K.solveEq(hv,ps[0])}catch(_){rr=null}if(rr&&!rr.approx)for(const z of rr.sols){if(typeof z==='string')continue;excl.push(ps[0]+' ≠ '+str(z))}else excl.push(str(hv)+' ≠ 0')}else excl.push(str(hv)+' ≠ 0');continue}
+   // conditions d'inégalité (racines paires, ln, arcsin…) : ensemble des valeurs admissibles du paramètre
+   const ineq=h0.type==='le1'?'abs('+str(hv)+') <= 1':str(hv)+(h0.type==='gt0'?' > 0':' >= 0');
+   if(ps.length===1){let rr=null;try{rr=K.solveInequality(ineq.replace(/−/g,'-').replace(/·/g,'*'),ps[0])}catch(_){}if(rr&&rr.text&&!/^ℝ$/.test(rr.text))excl.push(ps[0]+' ∈ '+rr.text);else if(!rr)excl.push(h0.type==='le1'?'|'+str(hv)+'| ≤ 1':str(hv)+rel)}else excl.push(h0.type==='le1'?'|'+str(hv)+'| ≤ 1':str(hv)+rel)}
+  if(bad){dropped++;continue}if(excl.length){sol.__conds=[...new Set(excl)];notes.push('Domaine de l’expression initiale : '+sol.__conds.join(', '))}kept.push(sol)}
+ if(dropped)notes.push(dropped+' solution(s) exclue(s) : hors du domaine de l’équation initiale (dénominateur nul, racine paire ou logarithme d’un négatif…)');
+ return{...r,sols:kept,notes}}
 function probe(e){const env={};[...symbols(e)].forEach((s,i)=>{env[s]=1.31+.53*i});return env}
 function sameVal(a,b){if(eq(a,b))return true;const env=probe(add(a,b));const x=complexApprox(a,env),y=complexApprox(b,env);return Math.hypot(x.re-y.re,x.im-y.im)<1e-9*Math.max(1,Math.hypot(x.re,x.im))}
-function verifySys(Es,vars,s){const env0=probe(add(...Es,...Object.values(s)));for(const v of vars)delete env0[v];return Es.every(E=>{const z=complexApprox(substitute(E,s),{...env0,t:.77});return !Number.isFinite(z.re)||Math.hypot(z.re,z.im)<1e-7})}
+function verifySys(Es,vars,s){const env0=probe(add(...Es,...Object.values(s)));for(const v of vars)delete env0[v];return Es.every(E=>{let z;try{z=complexApprox(substitute(E,s),{...env0,t:.77})}catch(e){if(/Division par zéro/.test(e.message))verifySys.domainHit=true;return false}return !Number.isFinite(z.re)||Math.hypot(z.re,z.im)<1e-7})}
 function newton2(Es,vars){const d=Es.map(e=>vars.map(v=>derivative(e,v)));const roots=[];
  for(const sx of [-4,-2,-.5,.5,1,3,5])for(const sy of [-4,-2,-.5,.5,1,3,5]){let X=[sx,sy],ok=true;for(let it=0;it<60;it++){const env={[vars[0]]:X[0],[vars[1]]:X[1]};const f=Es.map(z=>approx(z,env)),J=d.map(r=>r.map(z=>approx(z,env)));const det=J[0][0]*J[1][1]-J[0][1]*J[1][0];if(!Number.isFinite(det)||Math.abs(det)<1e-13){ok=false;break}const dx=[(f[0]*J[1][1]-f[1]*J[0][1])/det,(f[1]*J[0][0]-f[0]*J[1][0])/det];X=[X[0]-dx[0],X[1]-dx[1]];if(Math.max(...dx.map(Math.abs))<1e-13)break}
   const env={[vars[0]]:X[0],[vars[1]]:X[1]};if(ok&&Es.every(e=>Math.abs(approx(e,env))<1e-8)&&roots.every(r=>Math.hypot(r[0]-X[0],r[1]-X[1])>1e-6))roots.push(X)}
@@ -5061,11 +5232,11 @@ function tanhSinh(f,a,b,{tol=1e-12,maxLevel=8,noOsc=false}={}){
  if(a===-Infinity)return tanhSinh(t=>{const d=1-t;return f(b-t/d)/(d*d)},0,1,{tol,maxLevel});
  const c=(a+b)/2,d=(b-a)/2;let h=1,prev=NaN,sum=0;const tmax=3.6;
  const node=(t)=>{const u=Math.PI/2*Math.sinh(t);const e=Math.exp(-2*Math.abs(u));const one_m=2*e/(1+e);const w=d*Math.PI/2*Math.cosh(t)*4*e/((1+e)*(1+e));// poids
-  const x=t>0?b-d*one_m:a+d*one_m;const v=f(x);return Number.isFinite(v)&&w>0?v*w:0};
+  const x=t>0?b-d*one_m:a+d*one_m;const v=f(x);if(Math.abs(t)<1.5){nEv++;if(Number.isNaN(v))nNaN++}return Number.isFinite(v)&&w>0?v*w:0};let nEv=0,nNaN=0;// valeurs NaN : jamais assimilées à 0 en masse
  sum=node(0);let I=h*sum;
  for(let k=1;k<=tmax/h;k++)sum+=node(k*h)+node(-k*h);I=h*sum;
- for(let level=1;level<=maxLevel;level++){h/=2;for(let k=1;k*h<=tmax;k+=2)sum+=node(k*h)+node(-k*h);const In=h*sum;const err=Math.abs(In-I);I=In;if(level>=3&&err<=tol*Math.max(1,Math.abs(I)))return{value:I,err}}
- return{value:I,err:Math.abs(I-prev)}}
+ for(let level=1;level<=maxLevel;level++){h/=2;for(let k=1;k*h<=tmax;k+=2)sum+=node(k*h)+node(-k*h);const In=h*sum;const err=Math.abs(In-I);I=In;if(level>=3&&err<=tol*Math.max(1,Math.abs(I))){if(nNaN>0.2*nEv)return{value:NaN,err:NaN,nan:true};return{value:I,err}}}
+ if(nNaN>0.2*nEv)return{value:NaN,err:NaN,nan:true};return{value:I,err:Math.abs(I-prev)}}
 // quadrature emboîtée (intégrales multiples) : niveaux fixes pour borner le coût
 function nestedQuad(fc,specs,env={},depth=0,level=null){const sp=specs[specs.length-1-depth];// extérieur d'abord
  const lv=level??(specs.length===1?8:specs.length===2?5:4);
@@ -5350,7 +5521,26 @@ function definite2(f,v,a,b,opts={}){const r=baseDefinite(f,v,a,b,opts);if(!(r&&r
   else if(!isI(a)&&!isI(b))val=periodic(f,v,a,b,notes)}catch(_){val=null}
  if(!val)return r;const ev=K.complexApprox(val);if(!(Number.isFinite(ev.re)&&Math.abs(ev.im)<1e-10&&Math.abs(ev.re-r.numeric)<=1e-7*Math.max(1,Math.abs(r.numeric))))return r;
  return{value:val,numeric:r.numeric,notes:[...notes,'Contrôlé numériquement (tanh-sinh)'],status:'exact',primitive:null,method:'residues'}}
-K.definite=definite2;K.residueIntegral={realLine,periodic};
+// intégrande complexe (x réel) : f = Re f + i·Im f, chaque partie intégrée exactement si possible ; sinon quadrature complexe (Re et Im séparément), jamais un 0 par défaut
+function splitReIm(f){const I=K.I;const expS=e=>K.mapTree(e,z=>{if(z.t!=='f'||z.n!=='exp'||!K.hasI(z.a[0]))return z;const u=K.expand(z.a[0]);const ts=u.t==='a'?u.a:[u];const re=[],im=[];for(const t of ts){if(K.hasI(t))im.push(K.div(t,I));else re.push(t)}const b=K.add(...im);if(K.hasI(b))return z;return K.mul(K.fn('exp',K.add(...re)),K.add(K.fn('cos',b),K.mul(I,K.fn('sin',b))))});
+ const g=expS(f);const c=K.substitute(g,{i:K.neg(I)});const re=K.calcSimplify(K.div(K.add(g,c),K.TWO)),im=K.calcSimplify(K.div(K.sub(g,c),K.mul(K.TWO,I)));if(K.hasI(re)||K.hasI(im))return null;return[re,im]}
+function definiteC(f,v,a,b,opts={}){if(!K.hasI(f))return definite2(f,v,a,b,opts);
+ let parts=null;try{parts=splitReIm(f)}catch(_){parts=null}
+ const cnum=(re,im)=>({re,im});const fmt=(re,im)=>{const A=K.approxString;return im===0?A(re):A(re)+(im<0?' − ':' + ')+A(Math.abs(im))+'·i'};
+ if(parts){const R=definite2(parts[0],v,a,b,opts),J=iz(parts[1])?{value:Z,numeric:0,notes:[],status:'exact'}:definite2(parts[1],v,a,b,opts);
+  const notes=['Intégrande complexe : f = '+str(parts[0])+' + i·('+str(parts[1])+'), parties réelle et imaginaire intégrées séparément',...(R.notes||[]).map(n=>'Re : '+n),...(J.notes||[]).map(n=>'Im : '+n)];
+  for(const [X,nm] of [[R,'réelle'],[J,'imaginaire']])if(X.status==='divergent'||X.status==='domain')return{...X,notes:['Partie '+nm+' : '+(X.text||''),...notes]};
+  if(R.value&&J.value){const value=K.calcSimplify(K.add(R.value,K.mul(I,J.value)));const rn=typeof R.numeric==='number'?R.numeric:approx(R.value),jn=typeof J.numeric==='number'?J.numeric:approx(J.value);const st=R.status==='exact'&&J.status==='exact'?'exact':(R.status||J.status);
+   return{value,numeric:jn===0?rn:NaN,numericC:cnum(rn,jn),notes,status:st}}
+  const rn=R.value?approx(R.value):R.numeric,jn=J.value?approx(J.value):J.numeric;if(Number.isFinite(rn)&&Number.isFinite(jn))return{text:'≈ '+fmt(rn,jn),numeric:jn===0?rn:NaN,numericC:cnum(rn,jn),numericOnly:true,notes,status:'numeric'};
+  return{text:'Intégrale complexe non calculée',notes,status:'fail'}}
+ // quadrature complexe directe
+ if(![a,b].every(x=>x==='+inf'||x==='-inf'||isConst(x))||[...K.symbols(f)].some(s=>s!==v&&s!=='i'))return definite2(f,v,a,b,opts);
+ const fc=K.compileC(f,[v]);const bn=x=>x==='+inf'?Infinity:x==='-inf'?-Infinity:approx(x);const A=bn(a),B=bn(b);
+ const ev=x=>fc({[v]:{re:x,im:0}});const r1=K.tanhSinh(x=>ev(x).re,A,B),r2=K.tanhSinh(x=>ev(x).im,A,B);
+ if(!Number.isFinite(r1.value)||!Number.isFinite(r2.value))return{text:'Intégrale complexe : évaluation numérique impossible',notes:['Valeurs non définies sur l’intervalle'],status:'fail'};
+ return{text:'≈ '+fmt(r1.value,r2.value),numeric:r2.value===0?r1.value:NaN,numericC:cnum(r1.value,r2.value),numericOnly:true,notes:['Intégrande complexe : quadrature tanh-sinh sur Re f et Im f séparément'],status:'numeric'}}
+K.definite=definiteC;K.residueIntegral={realLine,periodic};
 
 }
 {
@@ -5374,11 +5564,21 @@ function apart(e,v='x'){const x=S(v);const {num,den}=K.numden(e);const dc=polyCo
 // ---------- intégration numérique de secours (RK4) et racines numériques réelles ----------
 function rk4(rhs,x0,y0,lo=-5,hi=5,steps=500){const f=(x,y)=>approx(rhs,{x,y});const side=end=>{const n=Math.max(2,Math.ceil(steps*Math.abs(end-x0)/(hi-lo))),h=(end-x0)/n;let x=x0,y=y0;const out=[{x,y}];for(let i=0;i<n;i++){const k1=f(x,y),k2=f(x+h/2,y+h*k1/2),k3=f(x+h/2,y+h*k2/2),k4=f(x+h,y+h*k3);y+=h*(k1+2*k2+2*k3+k4)/6;x+=h;if(!Number.isFinite(y)||Math.abs(y)>1e9)break;out.push({x,y})}return out};return side(lo).reverse().concat(side(hi).slice(1))}
 function rk4Second(rhs,x0,y0,v0,lo=-5,hi=5,steps=600){const f=(x,y,v)=>approx(rhs,{x,y,D1:v});const side=end=>{const n=Math.max(3,Math.ceil(steps*Math.abs(end-x0)/(hi-lo))),h=(end-x0)/n;let x=x0,y=y0,v=v0;const out=[{x,y}];for(let k=0;k<n;k++){const k1=f(x,y,v),l1=v,k2=f(x+h/2,y+h*l1/2,v+h*k1/2),l2=v+h*k1/2,k3=f(x+h/2,y+h*l2/2,v+h*k2/2),l3=v+h*k2/2,k4=f(x+h,y+h*l3,v+h*k3),l4=v+h*k3;y+=h*(l1+2*l2+2*l3+l4)/6;v+=h*(k1+2*k2+2*k3+k4)/6;x+=h;if(!Number.isFinite(y)||Math.abs(y)>1e9)break;out.push({x,y})}return out};return side(lo).reverse().concat(side(hi).slice(1))}
-function numericalRoots(ast,{lo=-20,hi=20,n=1400,variable='x'}={}){const F=x=>approx(ast,{[variable]:x}),roots=[],h=(hi-lo)/n;const rec=x=>{const fx=F(x);if(Number.isFinite(fx)&&Math.abs(fx)<1e-7&&roots.every(z=>Math.abs(z-x)>Math.max(1e-5,h*.12)))roots.push(x)};let px=lo,p=F(lo),pp=NaN;
- for(let j=1;j<=n;j++){const x=lo+h*j,y=F(x);if(Number.isFinite(p)&&Number.isFinite(y)&&p*y<0){let l=px,r=x,fl=p;for(let k=0;k<52;k++){const m=(l+r)/2,fm=F(m);if(!Number.isFinite(fm))break;if(fl*fm<=0)r=m;else{l=m;fl=fm}}rec((l+r)/2)}if(Number.isFinite(y)&&Math.abs(y)<1e-11)rec(x);
+function numericalRoots(ast,opts={}){const variable=opts.variable||'x',lo=opts.lo??-20,hi=opts.hi??20;
+ // polynôme à coefficients numériques : toutes les racines réelles (Aberth mis à l'échelle + Newton), sans tolérance absolue
+ try{const syms=[...K.symbols(ast)].filter(s=>s!==variable);const pc=!syms.length&&K.polyCoeffs?K.polyCoeffs(ast,variable,200):null;
+  if(pc&&pc.length>=2&&pc.every(z=>Number.isFinite(approx(z)))&&!pc.some(K.hasI)){const co=pc.map(z=>approx(z));const ev=x=>{let r=0,d=0;for(let j=co.length-1;j>=0;j--){d=d*x+r;r=r*x+co[j]}return[r,d]};
+   const rs=K.numericPolyRoots(pc).map(z=>K.complexApprox(z)).filter(w=>Math.abs(w.im)<=1e-9*Math.max(Math.abs(w.re),1e-300)).map(w=>{let x=w.re;for(let k=0;k<6;k++){const [f,d]=ev(x);if(!d||!f)break;const nx=x-f/d;if(!Number.isFinite(nx))break;x=nx}return x}).filter(x=>x>=lo-1e-12*Math.abs(lo)&&x<=hi+1e-12*Math.abs(hi)).sort((a,b)=>a-b);
+   const out=[];for(const x of rs)if(!out.length||Math.abs(x-out[out.length-1])>1e-12*Math.max(Math.abs(x),1e-300))out.push(x);out.plateaus=[];return out}}catch(_){}
+ return numericalRootsGrid(ast,{lo,hi,n:opts.n||1400,variable})}
+// résidu relatif : |f| comparé à la taille des termes (l'équation 5,48·10⁻¹⁶ = 4x³ n'est pas « résolue » par x = 0)
+function numericalRootsGrid(ast,{lo=-20,hi=20,n=1400,variable='x'}={}){const F=x=>approx(ast,{[variable]:x}),roots=[],h=(hi-lo)/n;const terms=ast.t==='a'?ast.a:[ast];const scale=x=>{let s=0;for(const t of terms){const v=Math.abs(approx(t,{[variable]:x}));if(Number.isFinite(v))s+=v}return s};
+ const rel=x=>{const fx=F(x);if(!Number.isFinite(fx))return Infinity;if(fx===0)return 0;const sc=scale(x);return sc>0?Math.abs(fx)/sc:Infinity};
+ const rec=(x,bis)=>{const r=rel(x);if(!(r<1e-9||bis))return;const i=roots.findIndex(z=>Math.abs(z-x)<=Math.max(1e-12*Math.abs(x),h*1e-9));if(i>=0){if(r<rel(roots[i]))roots[i]=x;return}roots.push(x)};let px=lo,p=F(lo),pp=NaN;
+ for(let j=1;j<=n;j++){const x=lo+h*j,y=F(x);if(Number.isFinite(p)&&Number.isFinite(y)&&p*y<0){let l=px,r=x,fl=p;for(let k=0;k<200&&r-l>Math.max(Math.abs(l),Math.abs(r))*2e-16;k++){const m=(l+r)/2,fm=F(m);if(!Number.isFinite(fm))break;if(fm===0){l=r=m;break}if(fl*fm<=0)r=m;else{l=m;fl=fm}}{const m=(l+r)/2,fm=Math.abs(F(m));if(Number.isFinite(fm)&&fm<=Math.max(Math.abs(p),Math.abs(y)))rec(m,true)}}if(Number.isFinite(y)&&(y===0||rel(x)<1e-12))rec(x);
   if(j>=2&&Number.isFinite(pp)&&Number.isFinite(p)&&Number.isFinite(y)&&Math.abs(p)<=Math.abs(pp)&&Math.abs(p)<=Math.abs(y)){const a=(pp+y-2*p)/2,b=(y-pp)/2;if(Math.abs(a)>1e-16){const d=Math.max(-1,Math.min(1,-b/(2*a)));rec(px+d*h)}}pp=p;p=y;px=x}roots.sort((a,b)=>a-b);
  // plateaux (fonction nulle sur tout un intervalle, ex. floor(x) sur [0, 1[) : une seule marque, bornes affinées
- const Z0=x=>{const v=F(x);return Number.isFinite(v)&&Math.abs(v)<1e-11};const out=[],plateaus=[];
+ const Z0=x=>{const v=F(x);return Number.isFinite(v)&&(v===0||rel(x)<1e-12)};const out=[],plateaus=[];
  for(let i=0;i<roots.length;i++){const a=roots[i];let j=i;while(j+1<roots.length&&roots[j+1]-roots[j]<=2.01*h&&Z0((roots[j]+roots[j+1])/2)&&Z0(roots[j]+(roots[j+1]-roots[j])/4))j++;
   if(j>i+2){const edge=(x,dir)=>{let a=x,b=x+dir*h*1.5;if(Z0(b))return b;for(let k=0;k<50;k++){const m=(a+b)/2;if(Z0(m))a=m;else b=m}return a};const L=Math.max(lo,edge(a,-1)),R=Math.min(hi,edge(roots[j],1));out.push(L);plateaus.push([L,R]);i=j}else out.push(a)}
  out.plateaus=plateaus;return out}
@@ -5762,7 +5962,7 @@ function variationTable(f,d1,v,dom,range){
  const segs=[];for(let i=0;i<cells.length-1;i++){const a=cells[i].x.x,b=cells[i+1].x.x;const mid=sampleBetween(a,b);if(!inDomain(dom,mid)){segs.push(null);continue}const y=evalAt(d1,v,mid);segs.push(Number.isFinite(y)?(Math.abs(y)<1e-14?0:Math.sign(y)):null)}
  for(let i=1;i<cells.length-1;i++){const l=segs[i-1],r=segs[i];if(cells[i].value&&l&&r&&l!==r)extrema.push({type:l>0?'maximum':'minimum',x:cells[i].label,y:cells[i].value})}
  return{cells,segs,extrema}}
-Object.assign(K,{solveInequality,isInequality,domainSet,signChart,study,realZeros});
+Object.assign(K,{periodOf,solveInequality,isInequality,domainSet,signChart,study,realZeros});
 
 }
 {
@@ -6600,10 +6800,10 @@ def('lcm|ppcm','algebre','lcm(a, b, …)','PPCM d’entiers ou de polynômes.',[
 // =========================================================================================
 cat('equations','Équations','=','Résoudre équations, inéquations, systèmes ; racines ; résolution numérique.');
 def('solve','equations','solve(eq, x)','Résout une équation, une inéquation ou un système. « expr » seule signifie expr = 0. Renvoie la liste des solutions.',[['eq','équation (avec =), expression, inéquation (<, ≤…), ou liste d’équations'],['x','inconnue ou liste d’inconnues (facultatif)']],['solve(x^2 - 5x + 6 = 0, x)','solve(sin(x) = 1/2, x)','solve(x*exp(x) = 1, x)','solve([x + y = 3, x - y = 1], [x, y])','solve(x^2 < 4, x)'],(a,ctx)=>{const target=a[0];
-  if(isList(target)){const eqs=target.a.map(relToExpr);let vars=a[1]?items(a[1],'Liste d’inconnues').map(varName):[...new Set(eqs.flatMap(e=>[...symbols(e)]))].filter(s=>!CONSTS.has(s)).sort();const r=K.solveSystem(eqs,vars);(r.notes||[]).forEach(n=>note(ctx,n));
+  if(isList(target)){const eqs=target.a.map(relToExpr);let vars=a[1]?items(a[1],'Liste d’inconnues').map(varName):[...new Set(eqs.flatMap(e=>[...symbols(e)]))].filter(s=>!CONSTS.has(s)).sort();const r=K.solveSystem(eqs,vars,{user:true});(r.notes||[]).forEach(n=>note(ctx,n));
    const sols=r.sols.map(s=>L(vars.map(v=>({t:'eq',op:'=',l:S(v),r:typeof s[v]==='string'?K.parse(s[v]):s[v]}))));return sols.length===1?sols[0]:L(sols)}
   if(target&&target.t==='eq'&&target.op!=='='){const v=autoVar(sub(E(target.l),E(target.r)),a[1]);const src=K.fmtValue(target).replace(/≤/g,'<=').replace(/≥/g,'>=');const r=K.solveInequality(src,v);(r.notes||[]).forEach(m=>note(ctx,m));return TEXT([v+' ∈ '+r.text])}
-  const e=relToExpr(target);const v=autoVar(e,a[1]);const r=K.solveEq(e,v);(r.notes||[]).filter(n=>!/vérifi/i.test(n)).forEach(n=>note(ctx,n));if(r.identity){note(ctx,'Identité : toute valeur du domaine convient');return L([])}
+  const e=relToExpr(target);const v=autoVar(e,a[1]);const r=K.solveEq(e,v,{symRadicals:true});(r.notes||[]).filter(n=>!/vérifi/i.test(n)).forEach(n=>note(ctx,n));if(r.identity){note(ctx,'Identité : toute valeur du domaine convient');return L([])}
   const out=(r.sols||[]).map(s=>typeof s==='string'?K.parse(s):s);if(r.approx)out.forEach(s=>{try{K.NUMVAL.add(s)}catch(_){}});return L(out)});
 def('nsolve|fsolve','equations','nsolve(eq, x, x0)','Résolution numérique (méthode de Newton) à partir de x0.',[['eq','équation ou expression'],['x','inconnue'],['x0','valeur de départ']],['nsolve(cos(x) = x, x, 1)','nsolve(x^5 + x - 1, x, 0)'],a=>{const e=relToExpr(a[0]);const v=autoVar(e,a.length>2?a[1]:undefined);const x0=num(a.length>2?a[2]:a[1]);const f=K.compileNum(e),d=K.compileNum(K.derivative(e,v));let x=x0;
   for(let k=0;k<100;k++){const fx=f({[v]:x}),dx=d({[v]:x});if(!Number.isFinite(fx)||!Number.isFinite(dx)||dx===0)err('Newton ne converge pas depuis '+x0);const nx=x-fx/dx;if(Math.abs(nx-x)<1e-15*Math.max(1,Math.abs(x))){x=nx;break}x=nx}if(Math.abs(f({[v]:x}))>1e-9)err('Newton ne converge pas depuis '+x0);return fromNum(x)},{expr:true});
@@ -6616,9 +6816,10 @@ def('diff|derivative','analyse','diff(f, x, n)','Dérivée de f par rapport à x
    for(let j=0;j<rest.length;j++){const x=rest[j];const ex=tidy(E(x));if(ex.t==='q'){if(!cur)err('Indique la variable avant l’ordre : diff(f, x, 2)');const n=Number(ex.p);for(let k=1;k<n;k++)r=K.derivative(r,cur);continue}
     if(ex.t==='s'&&cur&&j===rest.length-1&&!symbols(e).has(ex.n)&&rest.length===2){const res=K.nthOrder(prev,cur,ex.n,false);if(res.value)return res.value;err('Pas de formule n-ième trouvée')}
     cur=varName(x);prev=r;r=K.derivative(r,cur)}return tidy(r)};return mapList(a[0],go)},{expr:true});
+const numOfDef=r=>{if(r.numericC&&Number.isFinite(r.numericC.re)&&Number.isFinite(r.numericC.im)&&r.numericC.im!==0){const z=K.add(fromNum(r.numericC.re),K.mul(fromNum(r.numericC.im),K.I));K.NUMVAL.add(z);return z}return typeof r.numeric==='number'&&Number.isFinite(r.numeric)?fromNum(r.numeric):null};
 def('integrate|int','analyse','integrate(f, x)  ·  integrate(f, (x, a, b))','Primitive (sans constante) ou intégrale définie ; plusieurs tuples = intégrale multiple, le premier tuple est l’intégrale intérieure.',[['f','intégrande'],['x','variable (primitive)'],['(x, a, b)','variable et bornes (nombres, inf, ou expressions)']],['integrate(x*exp(x), x)','integrate(1/(x^3+1), x)','integrate(exp(-x^2), (x, -oo, oo))','integrate(x*y, (y, 0, x), (x, 0, 1))'],(a,ctx)=>{const f=E(a[0]);const tups=a.slice(1).filter(x=>x&&x.t==='tuple');
-  if(!tups.length){if(a.length===4){const r=K.definite(f,varName(a[1]),defB(E(a[2])),defB(E(a[3])));return r.value||err(r.status==='domain'||r.status==='divergent'?r.text:'Intégrale non calculable')}const v=autoVar(f,a[1]);note(ctx,'Primitive : ajouter une constante C');const F=K.integrate(f,v);if((K.INT_JOINS||[]).length)note(ctx,'Constantes raccordées en '+v+' = '+K.INT_JOINS.map(str).join(', ')+(K.INT_JOINS_PARTIAL?' : limites égales (formule non définie au point)':' : primitive continue et définie partout'));return F}
-  if(tups.length===1){const b=bounds(tups[0]);const r=K.definite(f,b.v,defB(b.a),defB(b.b));(r.notes||[]).forEach(n=>note(ctx,n));if(r.status==='divergent')err('Intégrale divergente');if(r.status==='domain')err(r.text);if(r.value)return r.value;if(typeof r.numeric==='number'){note(ctx,'Valeur numérique (pas de primitive élémentaire)');return fromNum(r.numeric)}err('Intégrale non calculable')}
+  if(!tups.length){if(a.length===4){const r=K.definite(f,varName(a[1]),defB(E(a[2])),defB(E(a[3])));if(r.value)return r.value;if(r.status==='domain'||r.status==='divergent')err(r.text);const nv=numOfDef(r);if(nv){note(ctx,'Valeur numérique (pas de primitive élémentaire)');return nv}err('Intégrale non calculable')}const v=autoVar(f,a[1]);note(ctx,'Primitive : ajouter une constante C');const F=K.integrate(f,v);if((K.INT_JOINS||[]).length)note(ctx,'Constantes raccordées en '+v+' = '+K.INT_JOINS.map(str).join(', ')+(K.INT_JOINS_PARTIAL?' : limites égales (formule non définie au point)':' : primitive continue et définie partout'));return F}
+  if(tups.length===1){const b=bounds(tups[0]);const r=K.definite(f,b.v,defB(b.a),defB(b.b));(r.notes||[]).forEach(n=>note(ctx,n));if(r.status==='divergent')err('Intégrale divergente');if(r.status==='domain')err(r.text);if(r.value)return r.value;const nv=numOfDef(r);if(nv){note(ctx,'Valeur numérique (pas de primitive élémentaire)');return nv}err('Intégrale non calculable')}
   const specs=tups.map(t=>{const b=bounds(t);return{v:b.v,a:pointStr(b.a),b:pointStr(b.b)}});const r=K.multiple(f,specs);(r.notes||[]).forEach(n=>note(ctx,n));if(r.value)return r.value;if(typeof r.numeric==='number')return fromNum(r.numeric);err('Intégrale non calculable')},{expr:true});
 def('nintegrate|nint','analyse','nintegrate(f, (x, a, b))','Intégrale définie numérique (tanh-sinh, bornes infinies acceptées).',[['f','intégrande'],['(x, a, b)','variable et bornes numériques']],['nintegrate(sin(x)/x, (x, 0, 1))','nintegrate(exp(-x^2), (x, 0, oo))'],a=>{const b=bounds(a[1]);const f=K.compileNum(E(a[0]));const va=isInf(b.a)?(b.a.t==='s'?Infinity:-Infinity):num(b.a),vb=isInf(b.b)?(b.b.t==='s'?Infinity:-Infinity):num(b.b);const r=K.tanhSinh(x=>f({[b.v]:x}),va,vb);const v=typeof r==='number'?r:r.value;return fromNum(v)},{expr:true});
 def('limit','analyse','limit(f, x, a, dir)','Limite de f quand x tend vers a (oo pour +∞). dir : "+" à droite, "-" à gauche.',[['f','expression'],['x','variable'],['a','point (nombre, expression, oo, -oo)'],['dir','"+" ou "-" (facultatif)']],['limit(sin(x)/x, x, 0)','limit((1 + 1/n)^n, n, oo)','limit(1/x, x, 0, "+")'],a=>{const f=E(a[0]);const v=autoVar(f,a[1]);if(!a[2])err('Point manquant : limit(f, x, a)');let pt=pointStr(E(a[2]));if(a[3]){const d=a[3].t==='str'?a[3].v:'';if(d!=='+'&&d!=='-')err('Direction : "+" ou "-"');pt=pt+d}
@@ -7222,12 +7423,12 @@ function solutionLines(vs,r){return r.sols.map((s,i)=>(vs+(r.sols.length>1&&r.ap
 function runSolveCore(numericOnly=false){const target='solveOut';try{
  const sources=$('eqIn').value.split(/[;\n]+/).map(s=>s.trim()).filter(Boolean),vs=$('solveVars').value.split(',').map(s=>s.trim()).filter(Boolean),R=Math.max(1,Math.min(1000,Number($('solveRange').value)||20));
  if(!sources.length)throw Error('Saisis une équation');vs.forEach(ensureVar);
- if(sources.length>1||vs.length>1){const r=K.solveSystem(sources,vs.length?vs:['x','y']);
+ if(sources.length>1||vs.length>1){const r=K.solveSystem(sources,vs.length?vs:['x','y'],{user:true});
   if(!r.sols.length)return setResult(target,{text:'Aucune solution',notes:r.notes.join(' · '),label:'SYSTÈME'});
   const lines=r.sols.map((s,i)=>(r.sols.length>1?'Solution '+(i+1)+' : ':'')+vs.map(v=>v+(r.approx?' ≈ ':' = ')+(typeof s[v]==='string'?s[v]:str(s[v]))).join(' ; ')).join('\n');
   const alt=r.approx?null:r.sols.map((s,i)=>(r.sols.length>1?'Solution '+(i+1)+' : ':'')+vs.map(v=>v+' ≈ '+(typeof s[v]==='string'?s[v]:K.numericText(s[v],paramScope()))).join(' ; ')).join('\n');
   return setResult(target,{text:lines,alternate:alt,numericOnly:!!r.approx,notes:r.notes.join(' · '),label:r.kind==='family'?'FAMILLE DE SOLUTIONS':'SOLUTIONS EXACTES'})}
- let v=vs[0]||'x';try{v=autoVar(K.parseEquation(sources[0]),v);if(v!==vs[0])$('solveVars').value=v}catch(_){}let r=numericOnly?{sols:K.numericalRoots(K.parseEquation(sources[0]),{lo:-R,hi:R,variable:v}).map(x=>K.numericText(x)),approx:true,notes:['Racines réelles numériques sur [−'+R+', '+R+']']}:K.solveEq(sources[0],v,{range:R});
+ let v=vs[0]||'x';try{v=autoVar(K.parseEquation(sources[0]),v);if(v!==vs[0])$('solveVars').value=v}catch(_){}let r=numericOnly?{sols:K.numericalRoots(K.parseEquation(sources[0]),{lo:-R,hi:R,variable:v}).map(x=>K.numericText(x)),approx:true,notes:['Racines réelles numériques sur [−'+R+', '+R+']']}:K.solveEq(sources[0],v,{range:R,symRadicals:true});
  if(r.identity)return setResult(target,{text:'Toute valeur du domaine est solution',notes:r.notes.join(' · '),label:'IDENTITÉ'});
  if(!r.sols.length)return setResult(target,{text:'Aucune solution'+(r.approx?' détectée':''),notes:r.notes.join(' · '),label:'RÉSULTAT'});
  const text=solutionLines(v,r);
@@ -7269,7 +7470,7 @@ $('matParameterized').onclick=()=>{$('matSize').value='2';buildMatrices();$$('#m
 // ===== Hypothèses déclarées (registre du moteur) =====
 function applyAssumptions(rerun=true){const txt=$('assumeIn').value;const r=K.setAssumptions(txt);const st=$('assumeStatus');
  $('assumeBadge').textContent=txt.trim()?'⚙ '+txt.trim().slice(0,40):'⚙ Hypothèses';$('assumeBadge').classList.toggle('on',!!txt.trim());
- st.textContent=!txt.trim()?'Aucune hypothèse : variables réelles quelconques.':(r.applied.length?'Appliquées : '+r.applied.join(' ; '):'')+(r.unknown.length?(r.applied.length?' · ':'')+'Non reconnues : '+r.unknown.join(' ; ')+' (formes acceptées : x>0, x>=0, x<0, a≠0, n∈ℤ, n∈ℕ)':'');
+ st.textContent=!txt.trim()?'Aucune hypothèse : variables réelles quelconques.':(r.applied.length?'Appliquées : '+r.applied.join(' ; '):'')+(r.unknown.length?(r.applied.length?' · ':'')+'Non reconnues : '+r.unknown.join(' ; ')+' (formes acceptées : x>0, x<=2, 0<y<π/2, y∈]0 ; π/2[, a≠0, n∈ℤ, n∈ℕ)':'');
  persistSoon();if(rerun&&window.innerWidth<651){$('assumePanel').hidden=true;$('assumeBadge').setAttribute('aria-expanded','false')}if(rerun&&!['graph','surface','complex','program'].includes(mode))execMode()}
 $('assumeBadge').onclick=()=>{const p=$('assumePanel');p.hidden=!p.hidden;$('assumeBadge').setAttribute('aria-expanded',String(!p.hidden));if(!p.hidden)$('assumeIn').focus({preventScroll:true})};
 $('assumeApply').onclick=()=>applyAssumptions();$('assumeClear').onclick=()=>{$('assumeIn').value='';applyAssumptions()};
@@ -7298,6 +7499,7 @@ function runIntegral(numericOnly=false){const target='intOut';try{
  const notes=r.notes.filter(Boolean).join(' · ');
  if(r.status==='divergent')return setResult(target,{text:r.text,notes,label:'INTÉGRALE DIVERGENTE'});
  if(r.status==='domain')return setResult(target,{text:r.text,notes,label:'INTÉGRALE NON DÉFINIE DANS ℝ'});
+ if((numericOnly||r.numericOnly)&&r.numericC&&r.numericC.im!==0){const c=r.numericC,A=v=>K.approxString(v,12);return setResult(target,{text:'≈ '+A(c.re)+(c.im<0?' − ':' + ')+A(Math.abs(c.im))+'·i',numericOnly:true,notes,label:'VALEUR NUMÉRIQUE (COMPLEXE)'})}
  if(numericOnly||r.numericOnly){if(typeof r.numeric!=='number'||!Number.isFinite(r.numeric))throw Error('Valeur numérique indisponible (bornes ou paramètres symboliques)');return setResult(target,{text:'≈ '+K.approxString(r.numeric,12),numericOnly:true,notes,label:'VALEUR NUMÉRIQUE'})}
  if(r.value)return setResult(target,{value:r.value,notes,label:dim===1?'INTÉGRALE EXACTE':dim===2?'INTÉGRALE DOUBLE EXACTE':'INTÉGRALE TRIPLE EXACTE'});
  setResult(target,{text:r.text,notes,label:'FORME FORMELLE'})}catch(e){err(target,e)}}
@@ -8330,8 +8532,10 @@ function runComplexNum(){try{const src=$('complexIn').value;if(!src.trim())throw
  if(exact&&K.size(exact)<60&&!/[0-9]\.[0-9]{6}/.test(str(exact))){lines.push('z = '+str(exact));if(exact.t!=='q')lines.push('z ≈ '+fmtC(lastComplex.r,lastComplex.i))}else lines.push('z ≈ '+fmtC(lastComplex.r,lastComplex.i));
  let m=null,a=null;try{m=K.calcSimplify(fn('abs',exact||e));a=K.calcSimplify(fn('arg',exact||e))}catch(_){}
  const ex=v=>v&&!K.hasFn(v,['abs','arg'])&&K.size(v)<40;
- lines.push('|z| = '+(ex(m)?str(m)+(m.t==='q'?'':' ≈ '+approxString(cl(lastComplex))):approxString(cl(lastComplex))));
- lines.push('arg(z) = '+(ex(a)?str(a)+(a.t==='q'?'':' ≈ '+approxString(cr(lastComplex))):approxString(cr(lastComplex)))+' rad');
+ const under=cl(lastComplex)===0&&!(exact&&K.iz(exact));const mNum=ex(m)?K.approx(m):cl(lastComplex),aNum=ex(a)?K.approx(a):cr(lastComplex);const ntx=v=>(v===0||!Number.isFinite(v))&&ex(m)&&!K.iz(m)?K.numericText(m)+(v===0?' (hors double précision)':''):approxString(v);
+ lines.push('|z| = '+(ex(m)?str(m)+(m.t==='q'?'':' ≈ '+ntx(mNum)):approxString(cl(lastComplex))));
+ lines.push('arg(z) = '+(ex(a)?str(a)+(a.t==='q'?'':' ≈ '+approxString(aNum)):under?'non déterminé numériquement (|z| sous-dépasse la double précision)':approxString(cr(lastComplex)))+(ex(a)||!under?' rad':''));
+ if(under)lines.push('Note : z ≠ 0 ; sa valeur décimale sort de la double précision (|z| ≈ '+(ex(m)?K.numericText(m):'?')+').');
  setResult('complexOut',{text:lines.join('\n'),notes:'Forme exacte quand elle existe ; argument principal dans ]−π ; π].',label:'NOMBRE COMPLEXE'});drawComplex()}catch(e){err('complexOut',e)}}
 
 // les exemples d'équations redéfinissent les inconnues (évite des inconnues d'un exemple précédent)
