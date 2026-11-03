@@ -5306,9 +5306,10 @@ function sophomoreC(f,v){const g=K.calcSimplify(f);const x=S(v);
  const tryP=z=>{if(z.t==='p'&&z.a.t==='s'&&z.a.n===v){const c=normal(div(z.b,x));if(isConst(c)&&!dep(c,v)&&!K.hasI(c)&&!iz(c))return c}if(z.t==='p'&&z.a.t==='p'&&z.a.a.t==='s'&&z.a.a.n===v&&isConst(z.b)){const c=normal(div(mul(z.a.b,z.b),x));if(isConst(c)&&!iz(c)&&!K.hasI(c))return c}
   if(z.t==='f'&&z.n==='exp'){const c=normal(div(z.a[0],mul(x,fn('ln',x))));if(isConst(c)&&!iz(c)&&!K.hasI(c))return c}return null};
  let c=tryP(g);if(c)return c;if(g.t==='p'&&isConst(g.b)&&g.b.t==='q'&&g.b.p===-1n&&g.b.q===1n){const c2=tryP(g.a);if(c2)return neg(c2)}return null}
-const n_=S('n'),j_=S('j');
+// indices de sommation frais : jamais un symbole des bornes ni du coefficient (sinon capture : ∫₀ⁿ, ∫₀ʲ)
+function freshIdx(used,cands){for(const c of cands)if(!used.has(c))return c;let i=1;while(used.has('n'+i))i++;return 'n'+i}
 // F(k) = ∫₀ᵏ x^(c·x) dx comme série Σ inerte (double somme)
-function sophomoreF(c,k){const inner=F('Sum',div(power(mul(neg(n_),fn('ln',k)),j_),fn('factorial',j_)),j_,Z,sub(n_,ONE));
+function sophomoreF(c,k){const used=new Set([...K.symbols(k),...K.symbols(c)]);const nN=freshIdx(used,['n','m','p','q','N']);used.add(nN);const jN=freshIdx(used,['j','l','r','s','J']);const n_=S(nN),j_=S(jN);const inner=F('Sum',div(power(mul(neg(n_),fn('ln',k)),j_),fn('factorial',j_)),j_,Z,sub(n_,ONE));
  if(K.eq(k,ONE))return F('Sum',div(power(neg(c),sub(n_,ONE)),power(n_,n_)),n_,ONE,S('Infinity'));
  return F('Sum',mul(power(neg(c),sub(n_,ONE)),div(power(k,n_),power(n_,n_)),inner),n_,ONE,S('Infinity'))}
 // valeur numérique de F(k) : série sommée directement (convergence rapide, termes ~ (c·k·ln k)^n/n!), contrôle de stabilité
