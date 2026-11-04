@@ -6042,7 +6042,29 @@ function laplace(f0,t='t',s='s'){try{return laplaceCore(f0,t,s)}catch(e){f0=type
   const g0=cnumE(g,{[t]:1e-9});if(!(Math.abs(g0.re)<1e-6))throw e;const sg=S('sv_');const Gs=substitute(G.value,{[s]:sg});const P0=K.integrate(Gs,'sv_');const Linf=K.limit(P0,'sv_','inf');
   const lv=Linf&&Linf.value!==undefined?Linf.value:Linf;if(!lv||lv.t===undefined)throw e;const val=T(K.mapTree(sub(lv,substitute(P0,{sv_:S(s)})),x=>x.t==='f'&&x.n==='abs'?x.a[0]:x));let alt=val;try{const c=T(K.parse(str(val).replace(/−/g,'-').replace(/·/g,'*').replace(/π/g,'pi')));if(K.size(c)<K.size(alt))alt=c}catch(_){}
   return{value:alt,roc:G.roc,rocX:G.rocX,notes:G.notes.concat(['L{f(t)/t} = ∫ₛ^∞ F(σ) dσ'])}}}
+// ---------- termes spéciaux (sur [0, ∞[ entier) : tⁿ·e^(αt)·ln(a·t), tanh(a·t), atan(a·t), 1/(t² + b²) ----------
+// L{tⁿ·e^(αt)·ln t} = Γ(n+1)/(s−α)^(n+1)·(ψ(n+1) − ln(s − α)) (dérivée en p de Γ(p+1)/(s−α)^(p+1)) ;
+// L{tanh(a·t)} = F(s/a)/a, F(σ) = 1/σ − (ψ(σ/4 + 1) − ψ(σ/4 + 1/2))/2 ; L{1/(t² + b²)} = G(b·s)/b et L{atan(a·t)} = G(s/a)/s,
+// G(σ) = Ci(σ)·sin σ + (π/2 − Si(σ))·cos σ ; convergence Re(s) > Re(α) (ou Re(s) > 0)
+function specialLaplace(term,t,s,notes){const Sv=S(s),X=S(t);const fs=term.t==='m'?term.a:[term];const dpd=fs.filter(f=>dep(f,t));if(!dpd.length)return null;const c=mul(...fs.filter(f=>!dep(f,t)));
+ const posParam=(a,what)=>{const g=signB(a);if(g===null){notes.push(str(a)+' > 0 supposé');return 1}if(g===0)throw new TErr(what+' : paramètre nul');return g};
+ const lnF=dpd.filter(f=>f.t==='f'&&f.n==='ln');
+ if(lnF.length===1&&!dpd.some(f=>f.t==='f'&&['tanh','atan'].includes(f.n))){const l=lin(lnF[0].a[0],t);if(!l||!iz(l[0])||iz(l[1]))return null;const rest=mul(...dpd.filter(f=>f!==lnF[0]));const o=termOf(rest,t);if(!o||!iz(o.q))return null;const nv=cnum(o.n).re;if(!(nv>-1))throw new TErr('tⁿ·ln t non intégrable en 0');
+  posParam(l[1],'ln(a·t)');const n1=add(o.n,ONE);const base=mul(fn('gamma',n1),power(sub(Sv,o.al),neg(n1)));// L{rest}
+  const v=mul(c,o.c,base,add(sub(fn('digamma',n1),fn('ln',sub(Sv,o.al))),fn('ln',l[1])));return{value:T(v),al:o.al}}
+ if(dpd.length!==1)return null;const f=dpd[0];
+ if(f.t==='f'&&(f.n==='tanh'||f.n==='atan')){const l=lin(f.a[0],t);if(!l||!iz(l[0])||iz(l[1]))return null;let a=l[1];const sg=posParam(a,f.n);const sgn=sg<0?MONE:ONE;if(sg<0)a=neg(a);
+  if(f.n==='tanh'){const sig=div(Sv,a);const F=sub(div(ONE,sig),div(sub(fn('digamma',add(div(sig,Q(4)),ONE)),fn('digamma',add(div(sig,Q(4)),HALF))),TWO));return{value:T(mul(c,sgn,div(F,a))),al:Z}}
+  const sig=div(Sv,a);const G=add(mul(fn('Ci',sig),fn('sin',sig)),mul(sub(div(PI,TWO),fn('Si',sig)),fn('cos',sig)));return{value:T(mul(c,sgn,div(G,Sv))),al:Z}}
+ if(f.t==='p'&&f.b.t==='q'&&f.b.p===-1n&&f.b.q===1n){const qc=quad(f.a,t);if(!qc||!iz(qc[1]))return null;const b2=T(div(qc[0],qc[2]));const bs=T(fn('sqrt',b2));const sg=signB(b2);if(sg!==null&&sg<=0)return null;if(sg===null)notes.push(str(b2)+' > 0 supposé');
+  const sig=mul(bs,Sv);const G=add(mul(fn('Ci',sig),fn('sin',sig)),mul(sub(div(PI,TWO),fn('Si',sig)),fn('cos',sig)));return{value:T(mul(c,div(G,mul(qc[2],bs)))),al:Z}}
+ return null}
 function laplaceCore(f0,t='t',s='s'){f0=typeof f0==='string'?K.parse(f0):f0;
+ {const ex=K.expand(f0);const ts=ex.t==='a'?ex.a:[ex];const nt=[];const sp=[];const spNotes=[];
+  if(!K.hasFn(f0,['heaviside','sign','abs','dirac'])){for(const x of ts){let r=null;if(K.hasFn(x,['ln','tanh','atan'])||(()=>{let q=false;K.mapTree(x,w=>{if(w.t==='p'&&w.b.t==='q'&&w.b.p===-1n&&quad(w.a,t))q=true;return w});return q})())r=specialLaplace(x,t,s,spNotes);if(r)sp.push(r);else nt.push(x)}}
+  if(sp.length){const rest=nt.length?laplaceCore(add(...nt),t,s):null;let roc=-Infinity,rocE=null;for(const r of sp){const ra=cnum(r.al).re;if(Number.isFinite(ra)){if(ra>roc){roc=ra;rocE=realPart(r.al)}}else rocE=realPart(r.al)}
+   const val=tidyGroups(add(...sp.map(r=>r.value),...(rest?[rest.value]:[])),s);let rocX=roc,rtxt='Re(s) > '+str(rocE);if(rest&&rest.rocX>roc){rocX=rest.rocX;rtxt=rest.roc}
+   return{value:val,roc:rtxt,rocX,notes:[...new Set(spNotes.concat(rest?rest.notes:[]))].concat((()=>{const u=[];if(sp.some(r=>K.hasFn(r.value,['digamma'])))u.push('ψ : fonction digamma');if(sp.some(r=>K.hasFn(r.value,['Si','Ci'])))u.push('Si, Ci : sinus et cosinus intégraux');if(sp.some(r=>K.hasFn(r.value,['ln'])&&K.hasFn(r.value,['digamma'])===false&&/γ/.test(str(r.value))))u.push('γ : constante d’Euler-Mascheroni');return u.length?['Fonctions spéciales — '+u.join(' ; ')]:[]})())}}}
  {// linéarité : chaque terme séparément quand des ruptures ou impulsions symboliques apparaissent (ordre inutile entre termes)
   const ex=K.expand(f0);const ts=ex.t==='a'?ex.a:[ex];let symb=false;K.mapTree(f0,w=>{if(w.t==='f'&&['heaviside','sign','abs','dirac'].includes(w.n)&&dep(w.a[0],t)&&[...symbols(w.a[0])].some(v=>v!==t))symb=true;return w});
   if(symb&&ts.length>1){const rs=ts.map(x=>laplaceCore1(x,t,s));let rx=-Infinity,rtxt=null;for(const r of rs){if(r.rocX>rx||Number.isNaN(r.rocX)){rx=r.rocX;rtxt=r.roc}}const nts=[...new Set(rs.flatMap(r=>r.notes))];
@@ -6266,21 +6288,59 @@ function odeLaplace(coeffs,g,ics,t='t',s='s'){const m=coeffs.length-1;const Sv=S
  const Ys=tidyGroups(T(div(add(G.value,rhsIC),lhs)),s,true);const inv=ilaplace(Ys,s,t);return{Y:Ys,y:inv.value,text:inv.text,notes:['L{y⁽ᵏ⁾} = sᵏ·Y − Σ s^(k−1−j)·y⁽ʲ⁾(0)','Y(s) = '+str(Ys)].concat(G.notes||[],inv.notes)}}
 const noDir=e=>K.mapTree(e,w=>w.t==='f'&&/^dirac/.test(w.n)?Z:w);
 // EDO saisie en texte (onglet EDO, bouton « Par Laplace ») : y, y', y''… ; conditions en x₀ (translation τ = x − x₀)
-function solveOdeLaplace(src,x0s='0',y0s='',v0s='',mores=''){src=String(src).replace(/[′’]/g,"'").replace(/″/g,"''");const parts=src.split('=');if(parts.length>2)throw new TErr('Une seule égalité attendue');
+// ---------- EDO saisie en texte : analyse ----------
+function parseOdeText(src){src=String(src).replace(/[′’]/g,"'").replace(/″/g,"''");const parts=src.split('=');if(parts.length>2)throw new TErr('Une seule égalité attendue');
  const prep=t=>t.replace(/(?<![A-Za-z_])y\s*\(\s*[xt]\s*\)/g,'y').replace(/(?<![A-Za-z_])y('{1,9})/g,(m,p)=>'Yd'+p.length+'_').replace(/(?<![A-Za-z_])y(?![A-Za-z_0-9])/g,'Yd0_');
  const L0=K.parse(prep(parts[0])),R0=parts.length>1?K.parse(prep(parts[1])):Z;const E=K.expand(sub(L0,R0));const syms=[...symbols(E)];
  const v=syms.includes('t')&&!syms.includes('x')?'t':'x';const ks=syms.map(x=>/^Yd(\d+)_$/.exec(x)).filter(Boolean).map(m=>+m[1]);if(!ks.length)throw new TErr('Équation en y, y′, y″… attendue');const m=Math.max(...ks);
  const coeffs=[];for(let k=0;k<=m;k++){const a=T(K.derivative(E,'Yd'+k+'_'));if(syms.some(x=>/^Yd\d+_$/.test(x)&&dep(a,x))||dep(a,v))throw new TErr('Laplace : équation linéaire à coefficients constants requise');coeffs.push(a)}
- let g=E;for(let k=0;k<=m;k++)g=substitute(g,{['Yd'+k+'_']:Z});g=T(neg(g));
+ let g=E;for(let k=0;k<=m;k++)g=substitute(g,{['Yd'+k+'_']:Z});g=T(neg(g));return{coeffs,g,v,m}}
+// dérivée « hors des ruptures » : les distributions (δ, δ′) sont retirées avant et après chaque dérivation ;
+// réservée au contrôle du résidu régulier, elle ne remplace pas la dérivation symbolique ni le contrôle des sauts
+const derivativeOffBreaks=(e,v)=>noDir(K.derivative(noDir(e),v));
+// impulsions du forçage en x = b : coefficients de δ(x − b) et δ′(x − b) (h(x)·δ′ = h(b)·δ′ − h′(b)·δ ; δ(l·(x − b)) = δ(x − b)/|l|)
+function impulsesAt(g,v,b){const ex=K.expand(g);const ts=ex.t==='a'?ex.a:[ex];let c0=Z,c1=Z,unsupported=false;
+ for(const term of ts){const fs=term.t==='m'?term.a:[term];const di=fs.findIndex(f=>f.t==='f'&&/^dirac\d*$/.test(f.n)&&dep(f.a[0],v));if(di<0)continue;const f=fs[di];const l=lin(f.a[0],v);if(!l||iz(l[1])){unsupported=true;continue}
+  const root=T(neg(div(l[0],l[1])));if(!iz(normal(sub(root,b))))continue;const h=mul(...fs.filter((_,j)=>j!==di));const al=fn('abs',l[1]);
+  if(f.n==='dirac'){c0=add(c0,div(substitute(h,{[v]:b}),al))}else if(f.n==='dirac1'){const k=div(ONE,mul(l[1],al));c1=add(c1,mul(k,substitute(h,{[v]:b})));c0=sub(c0,mul(k,substitute(K.derivative(h,v),{[v]:b})))}else unsupported=true}
+ return{c:[T(c0),T(c1)],unsupported}}
+// contrôle complet d'une solution candidate : résidu régulier (hors ruptures), conditions initiales, et au sens des distributions
+// sauts J[r] = y⁽ʳ⁾(b⁺) − y⁽ʳ⁾(b⁻) aux ruptures, coefficients C[j] = Σ_{k=j+1..m} a_k·J[k−1−j] comparés aux impulsions du forçage
+function verifyOde(coeffs,g,ics,v,x0,y){const m=coeffs.length-1;const x0v=cnum(x0).re;const res={ok:true,why:[],checked:0,jumps:[],jumpsDone:false,jumpsPartial:[]};
+ const brk=(breakpoints(g,v)||[]).concat(breakpoints(y,v)||[]);{const ex=K.expand(g);K.mapTree(ex,w=>{if(w.t==='f'&&/^dirac\d*$/.test(w.n)&&dep(w.a[0],v)){const l=lin(w.a[0],v);if(l&&!iz(l[1]))brk.push(T(neg(div(l[0],l[1]))))}return w})}
+ const bs=[];for(const b of brk)if(!bs.some(c=>iz(normal(sub(c,b)))))bs.push(b);const bnum=bs.filter(isNumC).map(b=>({e:b,x:cnum(b).re}));
+ // résidu régulier
+ for(const dx of [0.37,0.91,1.63,2.71,3.37,0.53]){const xv=x0v+dx;if(bnum.some(b=>Math.abs(b.x-xv)<1e-3))continue;res.checked++;const X=Q(Math.round(xv*100),100);const gv=cnumE(noDir(substitute(g,{[v]:X})),{});let acc={re:-gv.re,im:-gv.im};let d=y;
+  for(let k=0;k<=m;k++){if(k)d=derivativeOffBreaks(d,v);const val=cnumE(noDir(mul(coeffs[k],substitute(d,{[v]:X}))),{});acc={re:acc.re+val.re,im:acc.im+val.im}}
+  if(!(Math.hypot(acc.re,acc.im)<1e-7*(1+Math.hypot(gv.re,gv.im)))){res.ok=false;res.why.push('résidu non nul en '+v+' = '+xv)}}
+ if(res.checked<3){res.ok=false;res.why.push('trop peu de points réguliers')}
+ // conditions initiales (limite à droite en x₀)
+ {let d=y;for(let j=0;j<m;j++){if(j)d=derivativeOffBreaks(d,v);const a=cnumE(noDir(d),{[v]:x0v+1e-9}),b=cnum(ics[j]);if(!(Math.hypot(a.re-b.re,a.im-b.im)<1e-6*(1+Math.hypot(b.re,b.im)))){res.ok=false;res.why.push('condition y'+"′".repeat(j)+'(x₀) non satisfaite')}}}
+ // sauts et impulsions
+ if(dirOf(y)){res.jumpsPartial.push('impulsions dans la solution elle-même : sauts non vérifiés')}
+ else{const sorted=bnum.slice().sort((a,b)=>a.x-b.x);for(const b of bs)if(!isNumC(b))res.jumpsPartial.push('rupture symbolique '+str(b)+' : sauts non vérifiés');
+  for(let q=0;q<sorted.length;q++){const b=sorted[q];if(!(b.x>x0v+1e-12)){if(Math.abs(b.x-x0v)<=1e-12)res.jumpsPartial.push('rupture en x₀ : convention de limite à droite');continue}
+   const gap=Math.min(q>0?b.x-sorted[q-1].x:1,q+1<sorted.length?sorted[q+1].x-b.x:1,1);const eps=gap/4;
+   const yL=noDir(onPiece(y,v,b.x-eps)),yR=noDir(onPiece(y,v,b.x+eps));const J=[];let dL=yL,dR=yR;
+   for(let r=0;r<m;r++){if(r){dL=K.derivative(dL,v);dR=K.derivative(dR,v)}J.push(T(sub(substitute(dR,{[v]:b.e}),substitute(dL,{[v]:b.e}))))}
+   const imp=impulsesAt(g,v,b.e);if(imp.unsupported){res.jumpsPartial.push('impulsion d’ordre ≥ 2 ou non affine en '+v+' = '+str(b.e)+' : non vérifiée');continue}
+   const C=[];for(let jj=0;jj<m;jj++){let c=Z;for(let k=jj+1;k<=m;k++)c=add(c,mul(coeffs[k],J[k-1-jj]));C.push(T(c))}
+   const target=jj=>jj<2?imp.c[jj]:Z;const eq=(a,b2)=>{const d=normal(sub(a,b2));if(iz(d))return true;const z=cnum(d);return Number.isFinite(z.re)&&Math.hypot(z.re,z.im)<1e-9*(1+Math.hypot(cnum(b2).re,cnum(b2).im))};
+   const okB=C.every((c,jj)=>eq(c,target(jj)));res.jumps.push({b:b.e,J,C,target:[target(0),target(1)],ok:okB});if(!okB){res.ok=false;res.why.push('sauts incompatibles avec le forçage en '+v+' = '+str(b.e))}}
+  res.jumpsDone=res.jumps.length>0}
+ return res}
+function solveOdeLaplace(src,x0s='0',y0s='',v0s='',mores=''){const {coeffs,g,v,m}=parseOdeText(src);
  const x0=K.parse(String(x0s||'0').trim()||'0');const icsS=[y0s,v0s,...String(mores||'').split(/[,;]/)].map(x=>String(x??'').trim());const ics=[];for(let j=0;j<m;j++){if(!icsS[j])throw new TErr('Condition y'+"′".repeat(j)+'(x₀) manquante (ordre '+m+')');ics.push(K.parse(icsS[j]))}
  const tau='tl_';const gt=T(substitute(g,{[v]:add(S(tau),x0)}));const r=odeLaplace(coeffs,gt,ics,tau,'s');let y=T(substitute(r.y,{[tau]:sub(S(v),x0)}));y=mergeE(K.mapTree(y,w=>w.t==='f'&&w.n==='heaviside'?fn('heaviside',T(w.a[0])):w));
- // contrôle : résidu de l'équation et conditions initiales (numérique, hors des ruptures)
- const bpt=(breakpoints(g,v)||[]).concat(breakpoints(y,v)||[]).map(p=>cnum(p).re);const x0v=cnum(x0).re;let ok=true,checked=0;
- for(const dx of [0.37,0.91,1.63,2.71,3.37,0.53]){const xv=x0v+dx;if(bpt.some(b=>Math.abs(b-xv)<1e-3))continue;checked++;let res=cnumE(noDir(substitute(g,{[v]:Q(Math.round(xv*100),100)})),{});let acc={re:-res.re,im:-res.im};let d=y;for(let k=0;k<=m;k++){if(k)d=K.derivative(d,v);const val=cnumE(noDir(mul(coeffs[k],d)),{[v]:Math.round(xv*100)/100});acc={re:acc.re+val.re,im:acc.im+val.im}}if(!(Math.hypot(acc.re,acc.im)<1e-7*(1+Math.hypot(res.re,res.im))))ok=false}
- let d=y;for(let j=0;j<m;j++){if(j)d=K.derivative(d,v);const a=cnumE(noDir(d),{[v]:x0v+1e-9}),b=cnum(ics[j]);if(!(Math.hypot(a.re-b.re,a.im-b.im)<1e-6*(1+Math.hypot(b.re,b.im))))ok=false}
- if(!ok||checked<3)throw new TErr('Contrôle de la solution par Laplace échoué');
- const notes=r.notes.slice();if(!iz(x0))notes.unshift('Conditions en x₀ = '+str(x0)+' : translation τ = '+v+' − '+str(x0));const disc=K.hasFn(g,['heaviside','dirac','sign','abs']);notes.push(disc?'Contrôlé numériquement : résidu de l’équation hors des ruptures et conditions initiales (sauts et impulsions : traités par la transformée, non revérifiés au sens des distributions)':'Vérifié : équation (résidu en '+checked+' points) et conditions initiales');
- return{y,Y:r.Y,order:m,variable:v,text:r.text,notes}}
+ const ver=verifyOde(coeffs,g,ics,v,x0,y);if(!ver.ok)throw new TErr('Contrôle de la solution par Laplace échoué ('+ver.why.join(' ; ')+')');
+ const notes=r.notes.slice();if(!iz(x0))notes.unshift('Conditions en x₀ = '+str(x0)+' : translation τ = '+v+' − '+str(x0));
+ const disc=K.hasFn(g,['heaviside','dirac','dirac1','sign','abs'])||K.hasFn(y,['heaviside','sign','abs']);
+ if(!disc)notes.push('Vérifié : équation (résidu en '+ver.checked+' points) et conditions initiales');
+ else{const pts=ver.jumps.map(j=>v+' = '+str(j.b)).join(', ');if(ver.jumpsDone&&!ver.jumpsPartial.length)notes.push('Vérifié au sens des distributions : résidu hors des ruptures ('+ver.checked+' points), sauts de y, y′… et impulsions en '+pts+', conditions initiales');
+  else notes.push('Contrôlé : résidu de l’équation hors des ruptures ('+ver.checked+' points) et conditions initiales'+(ver.jumpsDone?' ; sauts et impulsions vérifiés en '+pts:'')+(ver.jumpsPartial.length?' ; limites : '+[...new Set(ver.jumpsPartial)].join(' ; '):''))}
+ return{y,Y:r.Y,order:m,variable:v,text:r.text,notes,jumps:ver.jumps}}
+// contrôle d'une solution candidate fournie (tests négatifs : un vérificateur ne doit pas être complaisant)
+function checkOdeCandidate(src,x0s,icsArr,yExpr){const {coeffs,g,v}=parseOdeText(src);const x0=K.parse(String(x0s||'0'));return verifyOde(coeffs,g,icsArr.map(x=>typeof x==='string'?K.parse(x):x),v,x0,typeof yExpr==='string'?K.parse(yExpr):yExpr)}
 // sérialisation réinterprétable par le parseur (aller-retour exact, contrairement à l'affichage str)
 function inputText(e){const neg1=x=>x.t==='q'&&x.p<0n;const atom=x=>x.t==='s'||x.t==='f'||(x.t==='q'&&x.q===1n&&x.p>=0n);const wrap=x=>atom(x)?inputText(x):'('+inputText(x)+')';
  switch(e.t){
@@ -6294,7 +6354,7 @@ function inputText(e){const neg1=x=>x.t==='q'&&x.p<0n;const atom=x=>x.t==='s'||x
   return sign+ns+(ds.length?'/'+(ds.length>1?'('+ds.join('*')+')':ds[0]):'')}
  case'a':{let out='';e.a.forEach((x,k)=>{const t=inputText(x);if(k&&t.startsWith('-'))out+=' - '+t.slice(1);else out+=(k?' + ':'')+t});return out}
  default:return str(e)}}
-Object.assign(K,{laplace:laplaceV,ilaplace:ilaplaceV,fourier:fourierV,ifourier,ztrans:ztransV,iztrans:iztransV,laplaceRaw:laplace,ilaplaceRaw:ilaplace,talbot,checkLaplace,TErr,expPolyT:expPoly,odeLaplace,solveOdeLaplace,inputText});
+Object.assign(K,{laplace:laplaceV,ilaplace:ilaplaceV,fourier:fourierV,ifourier,ztrans:ztransV,iztrans:iztransV,laplaceRaw:laplace,ilaplaceRaw:ilaplace,talbot,checkLaplace,TErr,expPolyT:expPoly,odeLaplace,solveOdeLaplace,inputText,checkOdeCandidate});
 
 }
 {
@@ -9796,9 +9856,10 @@ function trPlot(m,e,res,a,b){const cv=$('trPlot');try{let f=null,label='',xr,dis
  else if(m==='four'){expr=res;v=b;xr=[-10,10];label='F('+b+')'}else if(m==='ifour'){expr=res;v=b;xr=[-6,6];label='f('+b+')'}
  else if(m==='z'){expr=e;v=a;discrete=true;label='u('+a+')'}else{expr=res;v=b;discrete=true;label='u('+b+')'}
  if(!expr){cv.hidden=true;$('trPlotCtl').hidden=true;return}const syms=[...K.symbols(expr)].filter(s=>!['pi','e','i','π'].includes(s)&&s!==v);if(syms.length){cv.hidden=true;$('trPlotCtl').hidden=true;return}
- if(discrete){const vals=[];const ex=expr;for(let n=0;n<=24;n++){const en=K.mapTree(ex,w=>w.t==='f'&&w.n==='dirac'?(K.iz(K.normal(K.substitute(w.a[0],{[v]:Q(n)})))?ONE:Z):w.t==='f'&&w.n==='heaviside'?(approx(K.substitute(w.a[0],{[v]:Q(n)}))>=0?ONE:Z):w);let y;try{const z=K.complexApprox(en,{[v]:n});y=Math.abs(z.im)>1e-12*(1+Math.abs(z.re))?NaN:z.re}catch(_){y=NaN}if(Number.isFinite(y))vals.push({n,y})}
+ if(discrete){const vals=[];const ex=expr;for(let n=0;n<=24;n++){const en=K.mapTree(ex,w=>w.t==='f'&&w.n==='dirac'?(K.iz(K.normal(K.substitute(w.a[0],{[v]:Q(n)})))?ONE:Z):w.t==='f'&&w.n==='heaviside'?(approx(K.substitute(w.a[0],{[v]:Q(n)}))>=0?ONE:Z):w);let y;try{// terme exact d'abord : les zéros (cos(π/2), sin(π)…) sont reconnus symboliquement, aucun seuil numérique global
+   const ek=K.substitute(en,{[v]:Q(n)});let ex2=null;try{ex2=K.calcSimplify(ek)}catch(_){}if(ex2&&K.iz(ex2))y=0;else{const z=K.complexApprox(ex2||ek,{});y=Math.abs(z.im)>1e-12*(1+Math.abs(z.re))?NaN:z.re}}catch(_){y=NaN}if(Number.isFinite(y))vals.push({n,y})}
   if(!vals.length){cv.hidden=true;$('trPlotCtl').hidden=true;return}
-  {const mx=Math.max(...vals.map(o=>Math.abs(o.y)));for(const o of vals)if(Math.abs(o.y)<=1e-12*mx)o.y=0}// zéros numériques (cos(π/2) ≈ 6·10⁻¹⁷)
+  cv.dataset.vals=vals.map(o=>o.n+':'+o.y).join(' ');// valeurs tracées (contrôle)
   // échelle : log si les modules s'étalent sur plus de 6 décades (croissance ou décroissance géométrique)
   const nz=vals.map(o=>Math.abs(o.y)).filter(a=>a>0);const spread=nz.length>=3?Math.max(...nz)/Math.min(...nz):1;const scale=TR_STATE.scale||'auto';const log=scale==='log'?nz.length>0:scale==='lin'?false:spread>1e6;
   const stem=(TR_STATE.style||'stem')==='stem';const neg=vals.some(o=>o.y<0);
