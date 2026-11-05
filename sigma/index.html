@@ -5475,17 +5475,26 @@ function solveSystem0(eqSrc,vars){
  if(polys.every(Boolean)){let G;try{G=groebner(polys)}catch(e){notes.push(e.message);G=null}
   if(G){if(G.length===1&&G[0].length===1&&G[0][0].e.every(x=>x===0))return{sols:[],notes:['Système incompatible (base de Gröbner = {1})']};
    const sols=[];let approxFlag=false;
-   const rec=(i,assign)=>{if(K.SOLVE_DEADLINE&&Date.now()>K.SOLVE_DEADLINE)throw Error('Délai de calcul dépassé');if(i<0){sols.push({...assign});return}const v=vars[i];
-    const cand=G.map(g=>simplify(normal(substitute(fromDistPoly(g,vars),assign)))).filter(e=>!iz(e)&&vars.every((w,j)=>j===i||!dep(e,w)||j>i&&false)).filter(e=>vars.every((w,j)=>j===i||!dep(e,w)));
-    if(!cand.length){const used=Object.values(assign).filter(w=>w.t==='s'&&/^t\d*$/.test(w.n)).length;const nm=used?'t'+(used+1):'t';const t=S(nm);assign[v]=t;notes.push('Infinité de solutions : '+v+' = '+nm+' quelconque');rec(i-1,assign);return}
-    cand.sort((a,b)=>(polyCoeffs(a,v,64)||[]).length-(polyCoeffs(b,v,64)||[]).length);
-    const r=K.solvePolyExpr(cand[0],v);if(r.approx)approxFlag=true;
-    for(const val of r.sols){const ok=cand.slice(1).every(e=>{const z=complexApprox(substitute(e,{[v]:val}),probe(e));return !Number.isFinite(z.re)||Math.hypot(z.re,z.im)<1e-7});if(!ok)continue;rec(i-1,{...assign,[v]:val})}};
-   try{rec(vars.length-1,{})}catch(e){notes.push(e.message)}
+   // résidu relatif d'un polynôme de la base en une affectation (valeurs exactes ou approchées) : |Σ termes| / Σ |termes|
+   const relResid=(g,assign)=>{const env=probe(add(...g.map(t=>t.c),...Object.values(assign)));const val={};for(const w of vars)if(assign[w])val[w]=complexApprox(assign[w],env);
+    let sr=0,si=0,sa=0;for(const t of g){let z=complexApprox(t.c,env);let re=z.re,im=z.im;for(let k=0;k<vars.length;k++){const e=t.e[k];if(!e)continue;const b=val[vars[k]];if(!b)return Infinity;for(let q=0;q<e;q++){const r2=re*b.re-im*b.im;im=re*b.im+im*b.re;re=r2}}
+     sr+=re;si+=im;sa+=Math.hypot(re,im)}if(!Number.isFinite(sr+si))return Infinity;return sa>0?Math.hypot(sr,si)/sa:0};
+   const rec=(i,assign,apx)=>{if(K.SOLVE_DEADLINE&&Date.now()>K.SOLVE_DEADLINE)throw Error('Délai de calcul dépassé');if(i<0){sols.push({...assign});return}const v=vars[i];
+    const subs=G.map(g=>({g,e:simplify(normal(substitute(fromDistPoly(g,vars),assign)))})).filter(o=>!iz(o.e));
+    // polynômes devenus constants : exactement non nuls → branche impossible ; après valeurs approchées, juger le résidu relatif
+    // (sinon un résidu d'arrondi de 10⁻¹³ serait pris pour une équation « constante = 0 » impossible)
+    for(const o of subs.filter(o=>vars.every(w=>!dep(o.e,w)))){if(!apx||relResid(o.g,assign)>1e-8)return}
+    const cand=subs.filter(o=>dep(o.e,v)&&vars.every((w,j)=>j===i||!dep(o.e,w)));
+    if(!cand.length){const used=Object.values(assign).filter(w=>w.t==='s'&&/^t\d*$/.test(w.n)).length;const nm=used?'t'+(used+1):'t';const t=S(nm);assign[v]=t;notes.push('Infinité de solutions : '+v+' = '+nm+' quelconque');rec(i-1,assign,apx);return}
+    cand.sort((a,b)=>(polyCoeffs(a.e,v,64)||[]).length-(polyCoeffs(b.e,v,64)||[]).length);
+    const r=K.solvePolyExpr(cand[0].e,v);if(r.approx){approxFlag=true;const msg='Polynôme éliminant en '+v+' : '+str(cand[0].e)+' = 0 — racines approchées numériquement, chaque solution contrôlée par résidu relatif';if(!notes.includes(msg))notes.push(msg)}
+    for(const val of r.sols){const a2={...assign,[v]:val};if(!cand.slice(1).every(o=>relResid(o.g,a2)<1e-8))continue;rec(i-1,a2,apx||!!r.approx)}};
+   try{rec(vars.length-1,{},false)}catch(e){notes.push(e.message)}
    const clean=sols.map(s=>Object.fromEntries(vars.map(v=>[v,K.calcSimplify(simplify(substitute(s[v],s)))])));
    verifySys.domainHit=false;const verified=clean.filter(s=>verifySys(Es,vars,s));
    if(!verified.length&&clean.length&&verifySys.domainHit)return{sols:[],kind:'none',notes:['Base de Gröbner (ordre lexicographique '+vars.join(' > ')+') et remontée triangulaire','Aucune solution : '+clean.map(s=>'('+vars.map(v=>v+' = '+str(s[v])).join(', ')+')').join(', ')+' annule un dénominateur de l’équation initiale']};const uniq=[];for(const s of verified)if(!uniq.some(u=>vars.every(v=>sameVal(u[v],s[v]))))uniq.push(s);
-   if(uniq.length||!sols.length)return{sols:uniq,approx:approxFlag,notes:['Base de Gröbner (ordre lexicographique '+vars.join(' > ')+') et remontée triangulaire',...notes]}}}
+   if(approxFlag&&uniq.length){const isR=u=>vars.every(v=>{try{const z=complexApprox(u[v],probe(u[v]));return Math.abs(z.im)<=1e-9*Math.max(1,Math.abs(z.re))}catch(_){return false}});const re=uniq.filter(isR),cx=uniq.filter(u=>!isR(u));uniq.length=0;uniq.push(...re,...cx);notes.push(re.length+' solution'+(re.length>1?'s':'')+' réelle'+(re.length>1?'s':'')+(cx.length?', '+cx.length+' complexe'+(cx.length>1?'s':''):''))}
+   if(uniq.length||!sols.length&&!approxFlag)return{sols:uniq,approx:approxFlag,notes:['Base de Gröbner (ordre lexicographique '+vars.join(' > ')+') et remontée triangulaire',...notes]}}}
  // substitution : une équation linéaire en une inconnue
  for(let i=0;i<Es.length;i++)for(const v of vars){const c=polyCoeffs(Es[i],v,1);if(!c||c.length!==2||vars.some(w=>dep(c[1],w)))continue;const val=normal(div(neg(c[0]),c[1]));const rest=Es.filter((_,j)=>j!==i).map(E=>substitute(E,{[v]:val}));const others=vars.filter(w=>w!==v);
   try{let sub;if(others.length===1&&rest.length===1){const r=K.solveEq(rest[0],others[0]);if(r.approx)continue;sub={sols:r.sols.map(x=>({[others[0]]:x}))}}else sub=solveSystem0(rest,others);
@@ -5557,7 +5566,9 @@ function solveSystemD(eqSrc,vars){const r=solveSystem0(eqSrc,vars);if(!r||!r.sol
  return{...r,sols:kept,notes}}
 function probe(e){const env={};[...symbols(e)].forEach((s,i)=>{env[s]=1.31+.53*i});return env}
 function sameVal(a,b){if(eq(a,b))return true;const env=probe(add(a,b));const x=complexApprox(a,env),y=complexApprox(b,env);return Math.hypot(x.re-y.re,x.im-y.im)<1e-9*Math.max(1,Math.hypot(x.re,x.im))}
-function verifySys(Es,vars,s){const env0=probe(add(...Es,...Object.values(s)));for(const v of vars)delete env0[v];return Es.every(E=>{let z;try{z=complexApprox(substitute(E,s),{...env0,t:.77})}catch(e){if(/Division par zéro/.test(e.message))verifySys.domainHit=true;return false}return !Number.isFinite(z.re)||Math.hypot(z.re,z.im)<1e-7})}
+function verifySys(Es,vars,s){const env0=probe(add(...Es,...Object.values(s)));for(const v of vars)delete env0[v];return Es.every(E=>{let z;try{z=complexApprox(substitute(E,s),{...env0,t:.77})}catch(e){if(/Division par zéro/.test(e.message))verifySys.domainHit=true;return false}if(!Number.isFinite(z.re))return true;const m=Math.hypot(z.re,z.im);if(m<1e-7)return true;
+  // échelle de l'équation (somme des |termes|) : un résidu d'arrondi sur des termes de 10¹² n'est pas un échec
+  let sc=0;try{const ex=K.expand(E,400);for(const t of(ex.t==='a'?ex.a:[ex])){const w=complexApprox(substitute(t,s),{...env0,t:.77});sc+=Math.hypot(w.re,w.im)}}catch(_){sc=0}return Number.isFinite(sc)&&m<=1e-9*sc})}
 function newton2(Es,vars){const d=Es.map(e=>vars.map(v=>derivative(e,v)));const roots=[];
  for(const sx of [-4,-2,-.5,.5,1,3,5])for(const sy of [-4,-2,-.5,.5,1,3,5]){let X=[sx,sy],ok=true;for(let it=0;it<60;it++){const env={[vars[0]]:X[0],[vars[1]]:X[1]};const f=Es.map(z=>approx(z,env)),J=d.map(r=>r.map(z=>approx(z,env)));const det=J[0][0]*J[1][1]-J[0][1]*J[1][0];if(!Number.isFinite(det)||Math.abs(det)<1e-13){ok=false;break}const dx=[(f[0]*J[1][1]-f[1]*J[0][1])/det,(f[1]*J[0][0]-f[0]*J[1][0])/det];X=[X[0]-dx[0],X[1]-dx[1]];if(Math.max(...dx.map(Math.abs))<1e-13)break}
   const env={[vars[0]]:X[0],[vars[1]]:X[1]};if(ok&&Es.every(e=>Math.abs(approx(e,env))<1e-8)&&roots.every(r=>Math.hypot(r[0]-X[0],r[1]-X[1])>1e-6))roots.push(X)}
@@ -7883,7 +7894,7 @@ def('lcm|ppcm','algebre','lcm(a, b, …)','PPCM d’entiers ou de polynômes.',[
 cat('equations','Équations','=','Résoudre équations, inéquations, systèmes ; racines ; résolution numérique.');
 def('solve','equations','solve(eq, x)','Résout une équation, une inéquation ou un système. « expr » seule signifie expr = 0. Renvoie la liste des solutions.',[['eq','équation (avec =), expression, inéquation (<, ≤…), ou liste d’équations'],['x','inconnue ou liste d’inconnues (facultatif)']],['solve(x^2 - 5x + 6 = 0, x)','solve(sin(x) = 1/2, x)','solve(x*exp(x) = 1, x)','solve([x + y = 3, x - y = 1], [x, y])','solve(x^2 < 4, x)'],(a,ctx)=>{const target=a[0];
   if(isList(target)){const eqs=target.a.map(relToExpr);let vars=a[1]?items(a[1],'Liste d’inconnues').map(varName):[...new Set(eqs.flatMap(e=>[...symbols(e)]))].filter(s=>!CONSTS.has(s)).sort();const r=K.solveSystem(eqs,vars,{user:true});(r.notes||[]).forEach(n=>note(ctx,n));
-   const sols=r.sols.map(s=>L(vars.map(v=>({t:'eq',op:'=',l:S(v),r:typeof s[v]==='string'?K.parse(s[v]):s[v]}))));return sols.length===1?sols[0]:L(sols)}
+   const sols=r.sols.map(s=>L(vars.map(v=>{const x=typeof s[v]==='string'?K.parse(s[v]):s[v];if(r.approx)try{K.NUMVAL.add(x)}catch(_){}return{t:'eq',op:'=',l:S(v),r:x}})));return sols.length===1?sols[0]:L(sols)}
   if(target&&target.t==='eq'&&target.op!=='='){const v=autoVar(sub(E(target.l),E(target.r)),a[1]);const src=K.fmtValue(target).replace(/≤/g,'<=').replace(/≥/g,'>=');const r=K.solveInequality(src,v);(r.notes||[]).forEach(m=>note(ctx,m));return TEXT([v+' ∈ '+r.text])}
   const e=relToExpr(target);const v=autoVar(e,a[1]);
   // variable complexe par convention (z, w) : résolution dans ℂ (familles k ∈ ℤ, racines n-ièmes)
@@ -8557,9 +8568,9 @@ function runSolveCore(numericOnly=false){const target='solveOut';try{
  if(!sources.length)throw Error('Saisis une équation');vs.forEach(ensureVar);
  if(sources.length>1||vs.length>1){const r=K.solveSystem(sources,vs.length?vs:['x','y'],{user:true});
   if(!r.sols.length)return setResult(target,{text:'Aucune solution',notes:r.notes.join(' · '),label:'SYSTÈME'});
-  const lines=r.sols.map((s,i)=>(r.sols.length>1?'Solution '+(i+1)+' : ':'')+vs.map(v=>v+(r.approx?' ≈ ':' = ')+(typeof s[v]==='string'?s[v]:str(s[v]))).join(' ; ')).join('\n');
+  const lines=r.sols.map((s,i)=>(r.sols.length>1?'Solution '+(i+1)+' : ':'')+vs.map(v=>v+(r.approx?' ≈ ':' = ')+(typeof s[v]==='string'?s[v]:r.approx?K.numericText(s[v],paramScope()):str(s[v]))).join(' ; ')).join('\n');
   const alt=r.approx?null:r.sols.map((s,i)=>(r.sols.length>1?'Solution '+(i+1)+' : ':'')+vs.map(v=>v+' ≈ '+(typeof s[v]==='string'?s[v]:K.numericText(s[v],paramScope()))).join(' ; ')).join('\n');
-  return setResult(target,{text:lines,alternate:alt,numericOnly:!!r.approx,notes:r.notes.join(' · '),label:r.kind==='family'?'FAMILLE DE SOLUTIONS':'SOLUTIONS EXACTES'})}
+  return setResult(target,{text:lines,alternate:alt,numericOnly:!!r.approx,notes:r.notes.join(' · '),label:r.kind==='family'?'FAMILLE DE SOLUTIONS':r.approx?'SYSTÈME · SOLUTIONS APPROCHÉES':'SOLUTIONS EXACTES'})}
  let v=vs[0]||'x';try{v=autoVar(K.parseEquation(sources[0]),v);if(v!==vs[0])$('solveVars').value=v}catch(_){}let r=numericOnly?{sols:K.numericalRoots(K.parseEquation(sources[0]),{lo:-R,hi:R,variable:v}).map(x=>K.numericText(x)),approx:true,notes:['Racines réelles numériques sur [−'+R+', '+R+']']}:K.solveEq(sources[0],v,{range:R,symRadicals:true});
  if(r.identity)return setResult(target,{text:'Toute valeur du domaine est solution',notes:r.notes.join(' · '),label:'IDENTITÉ'});
  if(!r.sols.length)return setResult(target,{text:'Aucune solution'+(r.approx?' détectée':''),notes:r.notes.join(' · '),label:'RÉSULTAT'});
